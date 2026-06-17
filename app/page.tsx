@@ -92,10 +92,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-xs mt-6" style={{ color: '#a0aec0' }}>
-          Demo: admin@aventura.com / admin123<br />
-          o empleado@aventura.com / emp123
-        </p>
       </div>
     </div>
   )

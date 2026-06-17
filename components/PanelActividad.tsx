@@ -233,15 +233,28 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     reader.readAsDataURL(file)
   }
 
+  const ARCHIVOS_PLANILLAS: Record<string, string> = {
+    'MP00-001': '/planillas/MP00-001 Senderos (diaria).xlsx',
+    'MP01-001': '/planillas/MP01-001 Bases Anclaje Cables.xlsx',
+    'MP01-002': '/planillas/MP01-002 Freno Plataforma.xlsx',
+    'MP01-003': '/planillas/MP01-003 Bases y Anclajes de Cables.xlsx',
+    'MP01-004': '/planillas/MP01-004 Equipo de vuelo.xlsx',
+    'MP01-005': '/planillas/MP01-005 Cables.xlsx',
+    'MP01-006': '/planillas/MP01-006 Anclaje Cables.xlsx',
+    'MP20-007': '/planillas/MP20-007 Plataforma de vuelo.xlsx',
+    'MP20-008': '/planillas/MP20-008 Barandas Senderos.xlsx',
+    'MP20-009': '/planillas/MP20-009 Plataformas.xlsx',
+    'MP20-010': '/planillas/MP20-010 Baranda de Senderos.xlsx',
+    'MP20-011': '/planillas/MP20-011 Plataformas de Vuelo.xlsx',
+  }
+
   function abrirArchivoOriginal(codigo: string) {
-    const dataUrl = archivosOriginales[codigo]
-    if (dataUrl) {
-      const win = window.open()
-      if (!win) return
-      win.document.write(`<iframe src="${dataUrl}" style="width:100%;height:100vh;border:none"></iframe>`)
-      win.document.close()
+    const archivo = ARCHIVOS_PLANILLAS[codigo]
+    if (archivo) {
+      window.open(archivo, '_blank')
     } else {
-      abrirPlanilla(codigo)
+      setToastTutorial('Planilla Excel no disponible para este mantenimiento')
+      setTimeout(() => setToastTutorial(null), 3500)
     }
   }
 
@@ -915,16 +928,15 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                         📖 Tutorial
                       </button>
 
-                      {/* Imprimir — genera planilla imprimible individual */}
+                      {/* Imprimir — abre Excel original */}
                       <button
                         onClick={e => {
                           e.stopPropagation()
-                          setPlanillaParaImprimir(p)
-                          setMostrarPDFMes(true)
+                          abrirArchivoOriginal(p.codigo)
                         }}
                         className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg font-medium"
                         style={{ background: '#f3f4f6', color: '#4b5563' }}
-                        title="Imprimir planilla para firmar">
+                        title="Descargar planilla Excel para imprimir">
                         🖨️ Imprimir
                       </button>
 

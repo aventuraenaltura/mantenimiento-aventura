@@ -15,10 +15,10 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    if (email === 'admin@aventura.com' && password === 'admin123') {
+    if (email === 'aventuraenaltura@gmail.com' && password === 'admin123') {
       localStorage.setItem('usuario', JSON.stringify({ nombre: 'Administrador', rol: 'admin', email }))
       router.push('/home')
-    } else if (email === 'empleado@aventura.com' && password === 'emp123') {
+    } else if (email === 'mantenimientogral@gmail.com' && password === 'mant123') {
       localStorage.setItem('usuario', JSON.stringify({ nombre: 'Empleado', rol: 'empleado', email }))
       router.push('/home')
     } else {

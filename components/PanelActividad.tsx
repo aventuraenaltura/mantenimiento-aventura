@@ -234,18 +234,18 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   }
 
   const ARCHIVOS_PLANILLAS: Record<string, string> = {
-    'MP00-001': '/planillas/MP00-001 Senderos (diaria).xlsx',
-    'MP01-001': '/planillas/MP01-001 Bases Anclaje Cables.xlsx',
-    'MP01-002': '/planillas/MP01-002 Freno Plataforma.xlsx',
-    'MP01-003': '/planillas/MP01-003 Bases y Anclajes de Cables.xlsx',
-    'MP01-004': '/planillas/MP01-004 Equipo de vuelo.xlsx',
-    'MP01-005': '/planillas/MP01-005 Cables.xlsx',
-    'MP01-006': '/planillas/MP01-006 Anclaje Cables.xlsx',
-    'MP20-007': '/planillas/MP20-007 Plataforma de vuelo.xlsx',
-    'MP20-008': '/planillas/MP20-008 Barandas Senderos.xlsx',
-    'MP20-009': '/planillas/MP20-009 Plataformas.xlsx',
-    'MP20-010': '/planillas/MP20-010 Baranda de Senderos.xlsx',
-    'MP20-011': '/planillas/MP20-011 Plataformas de Vuelo.xlsx',
+    'MP00-001': '/planillas/MP00-001 Senderos (diaria).pdf',
+    'MP01-001': '/planillas/MP01-001 Bases Anclaje Cables.pdf',
+    'MP01-002': '/planillas/MP01-002 Freno Plataforma.pdf',
+    'MP01-003': '/planillas/MP01-003 Bases y Anclajes de Cables.pdf',
+    'MP01-004': '/planillas/MP01-004 Equipo de vuelo.pdf',
+    'MP01-005': '/planillas/MP01-005 Cables.pdf',
+    'MP01-006': '/planillas/MP01-006 Anclaje Cables.pdf',
+    'MP20-007': '/planillas/MP20-007 Plataforma de vuelo.pdf',
+    'MP20-008': '/planillas/MP20-008 Barandas Senderos.pdf',
+    'MP20-009': '/planillas/MP20-009 Plataformas.pdf',
+    'MP20-010': '/planillas/MP20-010 Baranda de Senderos.pdf',
+    'MP20-011': '/planillas/MP20-011 Plataformas de Vuelo.pdf',
   }
 
   function abrirArchivoOriginal(codigo: string) {

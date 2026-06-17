@@ -69,7 +69,7 @@ export default function HomePage() {
         {/* Imagen de fondo — reemplazá con tu foto: copiá tu imagen a public/bg-lago.jpg */}
         {/* Por ahora usa una foto aérea de lago de Unsplash como placeholder */}
         <Image
-          src="/bg-lago.JPG"
+          src="/bg-lago.jpg"
           alt="Vista aérea Lago San Roque"
           fill
           style={{ objectFit: 'cover', objectPosition: 'center 40%' }}

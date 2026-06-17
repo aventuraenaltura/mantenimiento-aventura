@@ -116,7 +116,7 @@ export default function HomePage() {
             alt="Aventura en Altura"
             width={140}
             height={95}
-            style={{ objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))' }}
+            style={{ objectFit: 'contain', filter: 'brightness(0) invert(1) drop-shadow(0 2px 8px rgba(0,0,0,0.5))' }}
             priority
           />
           <div className="flex items-center gap-4 pt-2">

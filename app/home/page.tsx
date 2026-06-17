@@ -43,12 +43,39 @@ export default function HomePage() {
   const [usuario, setUsuario] = useState<{ nombre: string; rol: string } | null>(null)
   const [anio, setAnio] = useState(new Date().getFullYear())
   const [actividades, setActividades] = useState(ACTIVIDADES_BASE.map(a => ({ ...a, alertas: 0 })))
+  const [statsGlobales, setStatsGlobales] = useState({ vencidos: 0, proximos: 0, reparar: 0 })
 
   useEffect(() => {
     const u = localStorage.getItem('usuario')
     if (!u) { router.push('/'); return }
     setUsuario(JSON.parse(u))
     setActividades(ACTIVIDADES_BASE.map(a => ({ ...a, alertas: calcularAlertas(a.slug) })))
+
+    // Stats globales
+    try {
+      const fechasRaw = localStorage.getItem('fechas_planillas')
+      const fechas: Record<string, string> = fechasRaw ? JSON.parse(fechasRaw) : {}
+      const hoy = new Date()
+      const en7dias = new Date(); en7dias.setDate(hoy.getDate() + 7)
+      let vencidos = 0, proximos = 0
+      const mesesPorFrecuencia: Record<string, number> = {
+        diario: 0, semanal: 0, mensual: 1, trimestral: 3, semestral: 6, anual: 12
+      }
+      for (const p of PLANILLAS_INICIALES) {
+        const fechaStr = fechas[p.codigo]
+        if (!fechaStr) continue
+        const inicio = new Date(fechaStr)
+        const meses = mesesPorFrecuencia[p.frecuencia] ?? 1
+        const vence = new Date(inicio)
+        vence.setMonth(vence.getMonth() + meses)
+        if (vence < hoy) vencidos++
+        else if (vence <= en7dias) proximos++
+      }
+      const equiposRaw = localStorage.getItem('inv_equipos')
+      const equipos = equiposRaw ? JSON.parse(equiposRaw) : []
+      const reparar = equipos.filter((e: {ubicacion: string}) => e.ubicacion === 'para_reparar').length
+      setStatsGlobales({ vencidos, proximos, reparar })
+    } catch { /* sin datos */ }
   }, [router])
 
   function logout() {
@@ -65,7 +92,7 @@ export default function HomePage() {
 
       {/* HERO — imagen aérea del lago + logo */}
       {/* Reemplazá /bg-lago.jpg con tu foto aérea del Lago San Roque */}
-      <div className="relative w-full no-print" style={{ height: 260 }}>
+      <div className="no-print" style={{ position: 'relative', width: '100%', height: 260 }}>
         {/* Imagen de fondo — reemplazá con tu foto: copiá tu imagen a public/bg-lago.jpg */}
         {/* Por ahora usa una foto aérea de lago de Unsplash como placeholder */}
         <Image
@@ -129,21 +156,21 @@ export default function HomePage() {
           <div className="rounded-xl p-4 flex items-center gap-3" style={{ background: '#fde8e6', border: '1px solid #f5c4be' }}>
             <span className="text-2xl">🔴</span>
             <div>
-              <p className="text-xl font-bold" style={{ color: '#c0392b' }}>3</p>
+              <p className="text-xl font-bold" style={{ color: '#c0392b' }}>{statsGlobales.vencidos}</p>
               <p className="text-xs" style={{ color: '#c0392b' }}>Mantenimientos vencidos</p>
             </div>
           </div>
           <div className="rounded-xl p-4 flex items-center gap-3" style={{ background: '#fff4e0', border: '1px solid #f5dca0' }}>
             <span className="text-2xl">🟠</span>
             <div>
-              <p className="text-xl font-bold" style={{ color: '#b7770d' }}>5</p>
+              <p className="text-xl font-bold" style={{ color: '#b7770d' }}>{statsGlobales.proximos}</p>
               <p className="text-xs" style={{ color: '#b7770d' }}>Próximos 7 días</p>
             </div>
           </div>
           <div className="rounded-xl p-4 flex items-center gap-3" style={{ background: '#e6f5f4', border: '1px solid #b2dbd8' }}>
             <span className="text-2xl">🔧</span>
             <div>
-              <p className="text-xl font-bold" style={{ color: '#2a807a' }}>2</p>
+              <p className="text-xl font-bold" style={{ color: '#2a807a' }}>{statsGlobales.reparar}</p>
               <p className="text-xs" style={{ color: '#2a807a' }}>Equipos para reparar</p>
             </div>
           </div>

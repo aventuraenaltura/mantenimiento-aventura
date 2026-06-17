@@ -756,21 +756,17 @@ export default function InventarioPage() {
             <div className="flex items-center gap-3 flex-wrap">
               {/* Stats */}
               {[
-                { label: 'Total', val: equipos.length, color: 'rgba(255,255,255,0.9)' },
-                { label: 'En uso', val: totalEnUso, color: '#86efac' },
-                { label: 'Reparar', val: totalReparar, color: '#fca5a5' },
+                { label: 'Arneses en uso', val: equipos.filter(e => e.tipo === 'arnes' && e.ubicacion === 'en_uso').length, color: '#86efac' },
+                { label: 'Arneses depósito', val: equipos.filter(e => e.tipo === 'arnes' && e.ubicacion === 'deposito').length, color: 'rgba(255,255,255,0.9)' },
+                { label: 'Poleas en uso', val: equipos.filter(e => e.tipo === 'polea' && e.ubicacion === 'en_uso').length, color: '#86efac' },
+                { label: 'Poleas depósito', val: equipos.filter(e => e.tipo === 'polea' && e.ubicacion === 'deposito').length, color: 'rgba(255,255,255,0.9)' },
+                { label: 'Para reparar', val: totalReparar, color: '#fca5a5' },
               ].map(({ label, val, color }) => (
                 <div key={label} className="text-center px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.1)' }}>
                   <p className="text-lg font-bold" style={{ color }}>{val}</p>
                   <p className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</p>
                 </div>
               ))}
-              {/* Imprimir */}
-              <button onClick={imprimirInventario}
-                className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl"
-                style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', color: 'white' }}>
-                🖨️ Imprimir
-              </button>
               {/* Importar Excel — solo admin */}
               {esAdmin && (
                 <label className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl cursor-pointer"

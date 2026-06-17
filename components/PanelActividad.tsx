@@ -770,8 +770,8 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
             <div className="flex gap-2 mt-4">
               <button onClick={() => { setMostrarFormulario(true); setMostrarAdjuntarOriginal(false) }}
                 className="flex-1 text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90"
-                style={{ backgroundColor: color }}>
-                ✓ REALIZADO
+                style={{ backgroundColor: '#16a34a' }}>
+                ✓ Registrar que se realizó
               </button>
               <button onClick={() => abrirArchivoOriginal(planillaSeleccionada.codigo)}
                 className="px-3 py-2.5 text-white rounded-xl text-sm flex items-center gap-1.5" style={{ background: '#2d4a4a' }}

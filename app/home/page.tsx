@@ -3,13 +3,38 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
 
-const ACTIVIDADES = [
-  { slug: 'tirolesa',  nombre: 'Tirolesa',          logo: '/logos/tirolesa.png',  color: '#F5C800', textColor: '#1a1a1a', alertas: 2 },
-  { slug: 'arqueria',  nombre: 'Arquería',           logo: '/logos/arqueria.png',  color: '#C8956A', textColor: '#ffffff', alertas: 0 },
-  { slug: 'parque',    nombre: 'Parque Aéreo',       logo: '/logos/parque.png',    color: '#4FC3F7', textColor: '#1a1a1a', alertas: 1 },
-  { slug: 'salon',     nombre: 'Aventura Escondida', logo: '/logos/escondida.png', color: '#6B8E5A', textColor: '#ffffff', alertas: 0 },
+const ACTIVIDADES_BASE = [
+  { slug: 'tirolesa',  nombre: 'Tirolesa',          logo: '/logos/tirolesa.png',  color: '#F5C800', textColor: '#1a1a1a' },
+  { slug: 'arqueria',  nombre: 'Arquería',           logo: '/logos/arqueria.png',  color: '#C8956A', textColor: '#ffffff' },
+  { slug: 'parque',    nombre: 'Parque Aéreo',       logo: '/logos/parque.png',    color: '#4FC3F7', textColor: '#1a1a1a' },
+  { slug: 'salon',     nombre: 'Aventura Escondida', logo: '/logos/escondida.png', color: '#6B8E5A', textColor: '#ffffff' },
 ]
+
+function calcularAlertas(actividadSlug: string): number {
+  try {
+    const fechasRaw = localStorage.getItem('fechas_planillas')
+    if (!fechasRaw) return 0
+    const fechas: Record<string, string> = JSON.parse(fechasRaw)
+    const hoy = new Date()
+    const planillas = PLANILLAS_INICIALES.filter(p => p.actividad_id === actividadSlug)
+    let alertas = 0
+    for (const p of planillas) {
+      const fechaStr = fechas[p.codigo]
+      if (!fechaStr) continue
+      const inicio = new Date(fechaStr)
+      const mesesPorFrecuencia: Record<string, number> = {
+        diario: 0, semanal: 0, mensual: 1, trimestral: 3, semestral: 6, anual: 12
+      }
+      const meses = mesesPorFrecuencia[p.frecuencia] ?? 1
+      const vence = new Date(inicio)
+      vence.setMonth(vence.getMonth() + meses)
+      if (vence < hoy) alertas++
+    }
+    return alertas
+  } catch { return 0 }
+}
 
 const ANIO_INICIO = 2011
 
@@ -17,11 +42,13 @@ export default function HomePage() {
   const router = useRouter()
   const [usuario, setUsuario] = useState<{ nombre: string; rol: string } | null>(null)
   const [anio, setAnio] = useState(new Date().getFullYear())
+  const [actividades, setActividades] = useState(ACTIVIDADES_BASE.map(a => ({ ...a, alertas: 0 })))
 
   useEffect(() => {
     const u = localStorage.getItem('usuario')
     if (!u) { router.push('/'); return }
     setUsuario(JSON.parse(u))
+    setActividades(ACTIVIDADES_BASE.map(a => ({ ...a, alertas: calcularAlertas(a.slug) })))
   }, [router])
 
   function logout() {
@@ -125,7 +152,7 @@ export default function HomePage() {
         {/* Botones de actividades */}
         <h2 className="text-lg font-semibold mb-4" style={{ color: '#2d3a2e' }}>Seleccioná una actividad</h2>
         <div className="grid grid-cols-2 gap-4 mb-8">
-          {ACTIVIDADES.map(act => (
+          {actividades.map(act => (
             <Link key={act.slug} href={`/${act.slug}`}>
               <div
                 className="relative rounded-2xl overflow-hidden cursor-pointer hover:opacity-95 transition-all hover:shadow-xl active:scale-95"

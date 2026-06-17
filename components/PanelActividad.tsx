@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
 import { getFechaInicio, getProximaFechaDesdeConfig, getFechasDelMes } from '@/lib/config'
 import type { Planilla } from '@/lib/supabase'
@@ -60,6 +60,15 @@ const FREC_LABEL: Record<string, string> = {
 export default function PanelActividad({ actividadId, nombre, color, icono, logo }: Props) {
   const planillasBase = PLANILLAS_INICIALES.filter(p => p.actividad_id === actividadId) as unknown as Planilla[]
   const [planillaSeleccionada, setPlanillaSeleccionada] = useState<Planilla | null>(null)
+  const refDetalle = useRef<HTMLDivElement>(null)
+
+  function seleccionarPlanilla(p: Planilla | null) {
+    setPlanillaSeleccionada(p)
+    setMostrarFormulario(false)
+    setMostrarAdjuntarOriginal(false)
+    setExtrasAbierto(null)
+    if (p) setTimeout(() => refDetalle.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [mostrarPDFMes, setMostrarPDFMes] = useState(false)
   const [ejecuciones, setEjecuciones] = useState<Ejecucion[]>([])
@@ -638,7 +647,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                   const seleccionada = planillaSeleccionada?.codigo === p.codigo
                   return (
                     <div key={p.codigo}
-                      onClick={() => { setPlanillaSeleccionada(p); setMostrarFormulario(false); setMostrarAdjuntarOriginal(false) }}
+                      onClick={() => seleccionarPlanilla(p)}
                       className={`flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition-all border ${
                         seleccionada ? 'border-gray-400 shadow-sm' : 'border-transparent hover:border-gray-200 hover:bg-gray-50'
                       }`}
@@ -702,7 +711,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                       {items.map(item => (
                         <button
                           key={item.codigo}
-                          onClick={() => { setPlanillaSeleccionada(planillas.find(p => p.codigo === item.codigo) ?? null); setMostrarFormulario(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                          onClick={() => seleccionarPlanilla(planillas.find(p => p.codigo === item.codigo) ?? null)}
                           title={item.nombre}
                           className="flex items-center gap-1 w-full rounded px-1 py-0.5 text-left transition-opacity hover:opacity-80"
                           style={{ background: `${item.color}18` }}>
@@ -729,7 +738,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
         {/* Panel detalle / formulario (aparece cuando hay planilla seleccionada) */}
         {/* Panel detalle planilla seleccionada */}
         {planillaSeleccionada && !mostrarFormulario && (
-          <div className="panel rounded-xl border border-gray-200 p-4">
+          <div ref={refDetalle} className="panel rounded-xl border border-gray-200 p-4">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <span className="text-xs font-mono bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{planillaSeleccionada.codigo}</span>
@@ -887,7 +896,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                   >
                     {/* Fila superior: info + badge — clickeable para seleccionar */}
                     <div className="flex items-start justify-between gap-2 cursor-pointer"
-                      onClick={() => { setPlanillaSeleccionada(p); setMostrarFormulario(false); setMostrarAdjuntarOriginal(false); setExtrasAbierto(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
+                      onClick={() => seleccionarPlanilla(p)}>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                           <span className="text-xs font-mono bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{p.codigo}</span>

@@ -198,14 +198,14 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
 
         {/* ── ARNESES ── */}
         <div style={{ pageBreakAfter: 'always' }}>
-          <div style={{ borderBottom: '2px solid #000', paddingBottom: 6, marginBottom: 8 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#555' }}>AVENTURA EN ALTURA — PTATANKA SRL</div>
-            <div style={{ fontSize: 16, fontWeight: 900 }}>PLANILLA DE CONTROL DE EQUIPOS — ARNESES</div>
-            <div style={{ display: 'flex', gap: 32, marginTop: 4, fontSize: 12 }}>
-              <span><strong>Fecha:</strong> {new Date(fecha).toLocaleDateString('es-AR')}</span>
-              <span><strong>Realizado por:</strong> {realizadoPor || '_______________'}</span>
-              <span style={{ marginLeft: 'auto', fontStyle: 'italic', color: '#555' }}>MB= Muy Bueno / R= Regular / V= Ver / C= Cambiar</span>
-            </div>
+          <div style={{ background: '#1e3a3a', color: 'white', padding: '10px 14px', borderRadius: '6px 6px 0 0', marginBottom: 0 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 2, opacity: 0.65, marginBottom: 2 }}>AVENTURA EN ALTURA — PTATANKA SRL</div>
+            <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 0.5 }}>PLANILLA DE CONTROL — ARNESES</div>
+          </div>
+          <div style={{ background: '#f0f0f0', border: '1px solid #bbb', borderTop: 'none', padding: '7px 14px', display: 'flex', gap: 32, alignItems: 'center', marginBottom: 8, fontSize: 12 }}>
+            <span><strong>Fecha:</strong> {new Date(fecha).toLocaleDateString('es-AR')}</span>
+            <span><strong>Realizado por:</strong> {realizadoPor || <span style={{ borderBottom: '1px solid #555', display: 'inline-block', width: 140 }}>&nbsp;</span>}</span>
+            <span style={{ marginLeft: 'auto', fontStyle: 'italic', color: '#555', fontSize: 11 }}>MB= Muy Bueno &nbsp;|&nbsp; R= Regular &nbsp;|&nbsp; V= Ver &nbsp;|&nbsp; C= Cambiar</span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
@@ -252,6 +252,26 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
                   </tr>
                 )
               })}
+              {Array.from({ length: 10 }).map((_, i) => (
+                <tr key={`empty-a-${i}`}>
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={{ ...tdEmpty, minWidth: 80 }} />
+                </tr>
+              ))}
             </tbody>
           </table>
           <Firmas />
@@ -259,14 +279,14 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
 
         {/* ── POLEAS ── */}
         <div>
-          <div style={{ borderBottom: '2px solid #000', paddingBottom: 6, marginBottom: 8 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#555' }}>AVENTURA EN ALTURA — PTATANKA SRL</div>
-            <div style={{ fontSize: 16, fontWeight: 900 }}>PLANILLA DE CONTROL DE EQUIPOS — POLEAS</div>
-            <div style={{ display: 'flex', gap: 32, marginTop: 4, fontSize: 12 }}>
-              <span><strong>Fecha:</strong> {new Date(fecha).toLocaleDateString('es-AR')}</span>
-              <span><strong>Realizado por:</strong> {realizadoPor || '_______________'}</span>
-              <span style={{ marginLeft: 'auto', fontStyle: 'italic', color: '#555' }}>MB= Muy Bueno / R= Regular / V= Ver / C= Cambiar</span>
-            </div>
+          <div style={{ background: '#1e3a3a', color: 'white', padding: '10px 14px', borderRadius: '6px 6px 0 0', marginBottom: 0 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 2, opacity: 0.65, marginBottom: 2 }}>AVENTURA EN ALTURA — PTATANKA SRL</div>
+            <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 0.5 }}>PLANILLA DE CONTROL — POLEAS</div>
+          </div>
+          <div style={{ background: '#f0f0f0', border: '1px solid #bbb', borderTop: 'none', padding: '7px 14px', display: 'flex', gap: 32, alignItems: 'center', marginBottom: 8, fontSize: 12 }}>
+            <span><strong>Fecha:</strong> {new Date(fecha).toLocaleDateString('es-AR')}</span>
+            <span><strong>Realizado por:</strong> {realizadoPor || <span style={{ borderBottom: '1px solid #555', display: 'inline-block', width: 140 }}>&nbsp;</span>}</span>
+            <span style={{ marginLeft: 'auto', fontStyle: 'italic', color: '#555', fontSize: 11 }}>MB= Muy Bueno &nbsp;|&nbsp; R= Regular &nbsp;|&nbsp; V= Ver &nbsp;|&nbsp; C= Cambiar</span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
@@ -311,6 +331,25 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
                   </tr>
                 )
               })}
+              {Array.from({ length: 10 }).map((_, i) => (
+                <tr key={`empty-p-${i}`}>
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={tdEmpty} />
+                  <td style={{ ...tdEmpty, minWidth: 80 }} />
+                </tr>
+              ))}
             </tbody>
           </table>
           <Firmas />
@@ -573,12 +612,15 @@ function Firmas() {
 }
 
 const th: React.CSSProperties = {
-  padding: '7px 6px', fontSize: 12, fontWeight: 700, textAlign: 'center',
-  background: '#1e3a3a', color: 'white', whiteSpace: 'nowrap', border: '1px solid #2d5555',
+  padding: '8px 6px', fontSize: 12, fontWeight: 700, textAlign: 'center',
+  background: '#1e3a3a', color: 'white', whiteSpace: 'nowrap', border: '1px solid #4a7a7a',
 }
 const td: React.CSSProperties = {
-  padding: '5px 6px', border: '1px solid #ccc', textAlign: 'left', fontSize: 12,
+  padding: '6px 7px', border: '1px solid #bbb', textAlign: 'left', fontSize: 12,
 }
 const tdC: React.CSSProperties = {
-  padding: '5px 6px', border: '1px solid #ccc', textAlign: 'center', fontSize: 12,
+  padding: '6px 7px', border: '1px solid #bbb', textAlign: 'center', fontSize: 12,
+}
+const tdEmpty: React.CSSProperties = {
+  padding: '10px 7px', border: '1px solid #ccc', fontSize: 12, background: '#fafafa',
 }

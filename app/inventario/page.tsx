@@ -754,19 +754,44 @@ export default function InventarioPage() {
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              {/* Stats */}
-              {[
-                { label: 'Arneses en uso', val: equipos.filter(e => e.tipo === 'arnes' && e.ubicacion === 'en_uso').length, color: '#86efac' },
-                { label: 'Arneses depósito', val: equipos.filter(e => e.tipo === 'arnes' && e.ubicacion === 'deposito').length, color: 'rgba(255,255,255,0.9)' },
-                { label: 'Poleas en uso', val: equipos.filter(e => e.tipo === 'polea' && e.ubicacion === 'en_uso').length, color: '#86efac' },
-                { label: 'Poleas depósito', val: equipos.filter(e => e.tipo === 'polea' && e.ubicacion === 'deposito').length, color: 'rgba(255,255,255,0.9)' },
-                { label: 'Para reparar', val: totalReparar, color: '#fca5a5' },
-              ].map(({ label, val, color }) => (
-                <div key={label} className="text-center px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                  <p className="text-lg font-bold" style={{ color }}>{val}</p>
-                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</p>
+              {/* Stat Arneses */}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                <div className="text-center pr-2" style={{ borderRight: '1px solid rgba(255,255,255,0.2)' }}>
+                  <p className="text-3xl font-black" style={{ color: 'white', lineHeight: 1 }}>{equipos.filter(e => e.tipo === 'arnes').length}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>Arneses</p>
                 </div>
-              ))}
+                <div className="text-xs space-y-0.5 pl-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: '#86efac' }}/>
+                    <span style={{ color: '#86efac' }}>{equipos.filter(e => e.tipo === 'arnes' && e.ubicacion === 'en_uso').length} en uso</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: 'rgba(255,255,255,0.5)' }}/>
+                    <span style={{ color: 'rgba(255,255,255,0.6)' }}>{equipos.filter(e => e.tipo === 'arnes' && e.ubicacion === 'deposito').length} depósito</span>
+                  </div>
+                </div>
+              </div>
+              {/* Stat Poleas */}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                <div className="text-center pr-2" style={{ borderRight: '1px solid rgba(255,255,255,0.2)' }}>
+                  <p className="text-3xl font-black" style={{ color: 'white', lineHeight: 1 }}>{equipos.filter(e => e.tipo === 'polea').length}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>Poleas</p>
+                </div>
+                <div className="text-xs space-y-0.5 pl-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: '#86efac' }}/>
+                    <span style={{ color: '#86efac' }}>{equipos.filter(e => e.tipo === 'polea' && e.ubicacion === 'en_uso').length} en uso</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: 'rgba(255,255,255,0.5)' }}/>
+                    <span style={{ color: 'rgba(255,255,255,0.6)' }}>{equipos.filter(e => e.tipo === 'polea' && e.ubicacion === 'deposito').length} depósito</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: '#fca5a5' }}/>
+                    <span style={{ color: '#fca5a5' }}>{equipos.filter(e => e.tipo === 'polea' && e.ubicacion === 'para_reparar').length} reparar</span>
+                  </div>
+                </div>
+              </div>
               {/* Importar Excel — solo admin */}
               {esAdmin && (
                 <label className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl cursor-pointer"

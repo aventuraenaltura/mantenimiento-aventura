@@ -6,6 +6,11 @@ import type { Planilla } from '@/lib/supabase'
 import Link from 'next/link'
 import Image from 'next/image'
 
+interface ArchivoAdjunto {
+  nombre: string
+  data: string
+}
+
 interface Ejecucion {
   id: string
   planilla_id: string
@@ -19,8 +24,7 @@ interface Ejecucion {
   observaciones?: string
   archivo_nombre?: string
   archivo_data?: string
-  agrimensor_nombre?: string
-  agrimensor_data?: string
+  archivos_agrimensor?: ArchivoAdjunto[]
 }
 
 interface Props {
@@ -78,8 +82,9 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   const [ejecuciones, setEjecuciones] = useState<Ejecucion[]>([])
   const [form, setForm] = useState({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', controlo: '', ingeniero: '' })
   const [archivoFirmado, setArchivoFirmado] = useState<File | null>(null)
-  const [archivoAgrimensor, setArchivoAgrimensor] = useState<File | null>(null)
+  const [archivosAgrimensor, setArchivosAgrimensor] = useState<File[]>([])
   const [mostrarHistorial, setMostrarHistorial] = useState(false)
+  const [editandoEjecucion, setEditandoEjecucion] = useState<string | null>(null)
   const [configCargada, setConfigCargada] = useState(false)
   const [proximasFechas, setProximasFechas] = useState<Record<string, string>>({})
   const [archivosOriginales, setArchivosOriginales] = useState<Record<string, string>>({}) // codigo -> dataURL
@@ -312,50 +317,113 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     return resultado
   }
 
+  function leerArchivo(file: File): Promise<ArchivoAdjunto> {
+    return new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onload = () => resolve({ nombre: file.name, data: reader.result as string })
+      reader.onerror = () => resolve({ nombre: file.name, data: '' })
+      reader.readAsDataURL(file)
+    })
+  }
+
   function guardarEjecucion() {
     if (!planillaSeleccionada || !form.nombre) return
     const proxima = calcularProximaFecha(form.fecha, planillaSeleccionada.frecuencia)
 
-    function leerArchivo(file: File | null): Promise<string | undefined> {
-      if (!file) return Promise.resolve(undefined)
-      return new Promise(resolve => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = () => resolve(undefined)
-        reader.readAsDataURL(file)
-      })
-    }
+    const promesaFirmado = archivoFirmado
+      ? new Promise<{ nombre: string; data: string }>(res => {
+          const r = new FileReader()
+          r.onload = () => res({ nombre: archivoFirmado.name, data: r.result as string })
+          r.readAsDataURL(archivoFirmado)
+        })
+      : Promise.resolve(null)
 
-    Promise.all([leerArchivo(archivoFirmado), leerArchivo(archivoAgrimensor)]).then(([firmadoData, agrimensorData]) => {
-      const nueva: Ejecucion = {
-        id: Date.now().toString(),
-        planilla_id: planillaSeleccionada.codigo,
-        fecha: form.fecha,
-        proxima_fecha: proxima,
-        ejecutado_por: form.nombre,
-        controlo: form.controlo,
-        ingeniero: form.ingeniero,
-        tiempo_min: form.tiempo ? Number(form.tiempo) : undefined,
-        repuestos: form.repuestos,
-        observaciones: form.obs,
-        archivo_nombre: archivoFirmado?.name,
-        archivo_data: firmadoData,
-        agrimensor_nombre: archivoAgrimensor?.name,
-        agrimensor_data: agrimensorData,
+    Promise.all([promesaFirmado, Promise.all(archivosAgrimensor.map(leerArchivo))]).then(([firmado, agrimensores]) => {
+      if (editandoEjecucion) {
+        // Modo edición
+        setEjecuciones(prev => {
+          const nuevas = prev.map(e => {
+            if (e.id !== editandoEjecucion) return e
+            return {
+              ...e,
+              fecha: form.fecha,
+              proxima_fecha: proxima,
+              ejecutado_por: form.nombre,
+              controlo: form.controlo,
+              ingeniero: form.ingeniero,
+              tiempo_min: form.tiempo ? Number(form.tiempo) : undefined,
+              repuestos: form.repuestos,
+              observaciones: form.obs,
+              ...(firmado ? { archivo_nombre: firmado.nombre, archivo_data: firmado.data } : {}),
+              archivos_agrimensor: agrimensores.length > 0
+                ? [...(e.archivos_agrimensor ?? []), ...agrimensores]
+                : e.archivos_agrimensor,
+            }
+          })
+          localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
+          return nuevas
+        })
+        setEditandoEjecucion(null)
+      } else {
+        // Nuevo registro
+        const nueva: Ejecucion = {
+          id: Date.now().toString(),
+          planilla_id: planillaSeleccionada.codigo,
+          fecha: form.fecha,
+          proxima_fecha: proxima,
+          ejecutado_por: form.nombre,
+          controlo: form.controlo,
+          ingeniero: form.ingeniero,
+          tiempo_min: form.tiempo ? Number(form.tiempo) : undefined,
+          repuestos: form.repuestos,
+          observaciones: form.obs,
+          archivo_nombre: firmado?.nombre,
+          archivo_data: firmado?.data,
+          archivos_agrimensor: agrimensores,
+        }
+        setEjecuciones(prev => {
+          const nuevas = [...prev, nueva]
+          localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
+          return nuevas
+        })
+        setProximasFechas(prev => ({ ...prev, [planillaSeleccionada.codigo]: proxima }))
       }
-      setEjecuciones(prev => {
-        const nuevas = [...prev, nueva]
-        localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
-        return nuevas
-      })
-      setProximasFechas(prev => ({ ...prev, [planillaSeleccionada.codigo]: proxima }))
       setMostrarFormulario(false)
-      setMostrarHistorial(false)
+      setMostrarHistorial(true)
       setForm({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', controlo: '', ingeniero: '' })
       setArchivoFirmado(null)
-      setArchivoAgrimensor(null)
-      alert(`✅ Registrado. Próxima ejecución: ${proxima}`)
+      setArchivosAgrimensor([])
     })
+  }
+
+  function eliminarArchivoAgrimensor(ejId: string, idx: number) {
+    setEjecuciones(prev => {
+      const nuevas = prev.map(e => {
+        if (e.id !== ejId) return e
+        const arr = [...(e.archivos_agrimensor ?? [])]
+        arr.splice(idx, 1)
+        return { ...e, archivos_agrimensor: arr }
+      })
+      localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
+      return nuevas
+    })
+  }
+
+  function abrirEdicionEjecucion(ej: Ejecucion) {
+    setForm({
+      fecha: ej.fecha,
+      nombre: ej.ejecutado_por,
+      tiempo: ej.tiempo_min?.toString() ?? '',
+      repuestos: ej.repuestos ?? '',
+      obs: ej.observaciones ?? '',
+      controlo: ej.controlo ?? '',
+      ingeniero: ej.ingeniero ?? '',
+    })
+    setArchivoFirmado(null)
+    setArchivosAgrimensor([])
+    setEditandoEjecucion(ej.id)
+    setMostrarFormulario(true)
+    setMostrarHistorial(false)
   }
 
   // Días del mes con planillas — cada entrada guarda lista de { codigo, color, estado }
@@ -857,19 +925,35 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                                     📎 {ej.archivo_nombre || 'Planilla firmada'}
                                   </a>
                                 )}
-                                {ej.agrimensor_data && (
-                                  <a href={ej.agrimensor_data} download={ej.agrimensor_nombre || 'mediciones.pdf'}
-                                    className="text-xs flex items-center gap-1 text-blue-600 hover:underline">
-                                    📐 {ej.agrimensor_nombre || 'Mediciones agrimensor'}
-                                  </a>
-                                )}
+                                {(ej.archivos_agrimensor ?? []).map((ag, idx) => (
+                                  <div key={idx} className="flex items-center gap-1">
+                                    <a href={ag.data} download={ag.nombre}
+                                      className="text-xs flex items-center gap-1 text-blue-600 hover:underline">
+                                      📐 {ag.nombre}
+                                    </a>
+                                    {esAdmin && (
+                                      <button onClick={() => eliminarArchivoAgrimensor(ej.id, idx)}
+                                        className="text-red-300 hover:text-red-500 text-xs leading-none" title="Quitar archivo">✕</button>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                            <div className="text-right flex-shrink-0">
-                              <p className="text-xs text-gray-400">Próxima:</p>
-                              <p className="text-xs font-semibold text-gray-600">
-                                {new Date(ej.proxima_fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                              </p>
+                            <div className="text-right flex-shrink-0 flex flex-col items-end gap-1.5">
+                              <div>
+                                <p className="text-xs text-gray-400">Próxima:</p>
+                                <p className="text-xs font-semibold text-gray-600">
+                                  {new Date(ej.proxima_fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                </p>
+                              </div>
+                              {esAdmin && (
+                                <button
+                                  onClick={() => abrirEdicionEjecucion(ej)}
+                                  className="text-xs px-2.5 py-1 rounded-lg font-semibold"
+                                  style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>
+                                  ✏️ Editar
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -897,8 +981,13 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
         {mostrarFormulario && planillaSeleccionada && (
           <div className="panel rounded-xl border border-gray-200 p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-800 text-sm">Registrar ejecución — {planillaSeleccionada.nombre}</h3>
-              <button onClick={() => setMostrarFormulario(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+              <div>
+                <h3 className="font-semibold text-gray-800 text-sm">
+                  {editandoEjecucion ? '✏️ Editando registro' : 'Registrar ejecución'} — {planillaSeleccionada.nombre}
+                </h3>
+                {editandoEjecucion && <p className="text-xs text-amber-600 mt-0.5">Los archivos nuevos se agregan a los existentes</p>}
+              </div>
+              <button onClick={() => { setMostrarFormulario(false); setEditandoEjecucion(null) }} className="text-gray-400 hover:text-gray-600">✕</button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -949,21 +1038,34 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                 </label>
               </div>
               <div className="col-span-2">
-                <label className="text-xs font-medium text-gray-600">Mediciones del agrimensor (PDF)</label>
-                <label className={`mt-0.5 flex items-center gap-2 cursor-pointer border-2 border-dashed rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                  archivoAgrimensor ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-400 hover:border-gray-300'
-                }`}>
-                  <span>{archivoAgrimensor ? '📐' : '📏'}</span>
-                  <span className="flex-1 truncate text-xs">{archivoAgrimensor ? archivoAgrimensor.name : 'Informe de mediciones del agrimensor'}</span>
-                  {archivoAgrimensor && <button type="button" onClick={e => { e.preventDefault(); setArchivoAgrimensor(null) }} className="text-red-400 text-xs">✕</button>}
-                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setArchivoAgrimensor(e.target.files?.[0] ?? null)} />
+                <label className="text-xs font-medium text-gray-600">Mediciones del agrimensor (PDF — podés adjuntar varios)</label>
+                <label className="mt-0.5 flex items-center gap-2 cursor-pointer border-2 border-dashed rounded-lg px-3 py-2.5 text-sm transition-colors border-blue-200 text-blue-500 hover:border-blue-400 hover:bg-blue-50">
+                  <span>📐</span>
+                  <span className="flex-1 text-xs">Seleccionar archivo(s) de mediciones</span>
+                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple className="hidden"
+                    onChange={e => {
+                      const files = Array.from(e.target.files ?? [])
+                      setArchivosAgrimensor(prev => [...prev, ...files])
+                      e.target.value = ''
+                    }} />
                 </label>
+                {archivosAgrimensor.length > 0 && (
+                  <div className="mt-1.5 space-y-1">
+                    {archivosAgrimensor.map((f, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-1.5">
+                        <span className="text-xs text-blue-700 flex-1 truncate">📄 {f.name}</span>
+                        <button type="button" onClick={() => setArchivosAgrimensor(prev => prev.filter((_, j) => j !== i))}
+                          className="text-red-400 text-xs hover:text-red-600">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <button onClick={guardarEjecucion}
               className="w-full mt-4 text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90"
-              style={{ backgroundColor: color }}>
-              Guardar registro
+              style={{ backgroundColor: editandoEjecucion ? '#1e3a3a' : color }}>
+              {editandoEjecucion ? '💾 Guardar cambios' : 'Guardar registro'}
             </button>
           </div>
         )}

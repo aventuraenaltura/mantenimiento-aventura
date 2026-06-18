@@ -96,11 +96,11 @@ function RatingSelect({ value, onChange }: { value: Rating; onChange: (v: Rating
 }
 
 function RatingBadge({ value }: { value: Rating }) {
-  if (!value) return <span style={{ color: '#9ca3af', fontSize: 11 }}>—</span>
+  if (!value) return <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>
   return (
     <span style={{
       background: colorRating(value) + '22', color: colorRating(value),
-      fontWeight: 800, fontSize: 11, padding: '2px 7px', borderRadius: 5,
+      fontWeight: 800, fontSize: 12, padding: '2px 8px', borderRadius: 5,
       border: `1px solid ${colorRating(value)}44`,
     }}>{value}</span>
   )
@@ -201,13 +201,13 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
           <div style={{ borderBottom: '2px solid #000', paddingBottom: 6, marginBottom: 8 }}>
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#555' }}>AVENTURA EN ALTURA — PTATANKA SRL</div>
             <div style={{ fontSize: 16, fontWeight: 900 }}>PLANILLA DE CONTROL DE EQUIPOS — ARNESES</div>
-            <div style={{ display: 'flex', gap: 32, marginTop: 4, fontSize: 10 }}>
+            <div style={{ display: 'flex', gap: 32, marginTop: 4, fontSize: 12 }}>
               <span><strong>Fecha:</strong> {new Date(fecha).toLocaleDateString('es-AR')}</span>
               <span><strong>Realizado por:</strong> {realizadoPor || '_______________'}</span>
               <span style={{ marginLeft: 'auto', fontStyle: 'italic', color: '#555' }}>MB= Muy Bueno / R= Regular / V= Ver / C= Cambiar</span>
             </div>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 8.5 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ background: '#1e3a3a', color: '#fff' }}>
                 <th style={th}>N°</th>
@@ -232,11 +232,11 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
               {arneses.map((eq, idx) => {
                 const r = regArneses[eq.id]
                 return (
-                  <tr key={eq.id} style={{ background: idx % 2 === 0 ? '#f9f9f9' : '#fff', borderBottom: '1px solid #ddd' }}>
+                  <tr key={eq.id} style={{ background: idx % 2 === 0 ? '#f5f5f5' : '#fff' }}>
                     <td style={td}>{eq.numero_interno}</td>
                     <td style={td}>{eq.marca}</td>
                     <td style={td}>{eq.modelo}</td>
-                    <td style={{ ...td, fontFamily: 'monospace', fontSize: 8 }}>{eq.numero_serie}</td>
+                    <td style={{ ...td, fontFamily: 'monospace' }}>{eq.numero_serie}</td>
                     <td style={{ ...td, color: '#888' }}>{r?.uso_anterior || '—'}</td>
                     <td style={td}>{r?.uso_actual || '—'}</td>
                     <td style={tdC}><RatingBadge value={r?.toma_fuerza || ''} /></td>
@@ -248,7 +248,7 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
                     <td style={tdC}><RatingBadge value={r?.elasticos || ''} /></td>
                     <td style={tdC}><RatingBadge value={r?.linea_vida || ''} /></td>
                     <td style={tdC}><RatingBadge value={r?.mosqueton_acero || ''} /></td>
-                    <td style={{ ...td, fontSize: 7 }}>{r?.observaciones || ''}</td>
+                    <td style={td}>{r?.observaciones || ''}</td>
                   </tr>
                 )
               })}
@@ -262,13 +262,13 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
           <div style={{ borderBottom: '2px solid #000', paddingBottom: 6, marginBottom: 8 }}>
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#555' }}>AVENTURA EN ALTURA — PTATANKA SRL</div>
             <div style={{ fontSize: 16, fontWeight: 900 }}>PLANILLA DE CONTROL DE EQUIPOS — POLEAS</div>
-            <div style={{ display: 'flex', gap: 32, marginTop: 4, fontSize: 10 }}>
+            <div style={{ display: 'flex', gap: 32, marginTop: 4, fontSize: 12 }}>
               <span><strong>Fecha:</strong> {new Date(fecha).toLocaleDateString('es-AR')}</span>
               <span><strong>Realizado por:</strong> {realizadoPor || '_______________'}</span>
               <span style={{ marginLeft: 'auto', fontStyle: 'italic', color: '#555' }}>MB= Muy Bueno / R= Regular / V= Ver / C= Cambiar</span>
             </div>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 8.5 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ background: '#1e3a3a', color: '#fff' }}>
                 <th style={th}>N°</th>
@@ -292,11 +292,11 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
               {poleas.map((eq, idx) => {
                 const r = regPoleas[eq.id]
                 return (
-                  <tr key={eq.id} style={{ background: idx % 2 === 0 ? '#f9f9f9' : '#fff', borderBottom: '1px solid #ddd' }}>
+                  <tr key={eq.id} style={{ background: idx % 2 === 0 ? '#f5f5f5' : '#fff' }}>
                     <td style={td}>{eq.numero_interno}</td>
                     <td style={td}>{eq.marca}</td>
                     <td style={td}>{eq.modelo}</td>
-                    <td style={{ ...td, fontFamily: 'monospace', fontSize: 8 }}>{eq.numero_serie}</td>
+                    <td style={{ ...td, fontFamily: 'monospace' }}>{eq.numero_serie}</td>
                     <td style={{ ...td, color: '#555' }}>{r?.uso || '—'}</td>
                     <td style={tdC}><RatingBadge value={r?.estado_carcaza || ''} /></td>
                     <td style={tdC}><RatingBadge value={r?.estado_vertigo || ''} /></td>
@@ -307,7 +307,7 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
                     <td style={tdC}><RatingBadge value={r?.estado_express || ''} /></td>
                     <td style={tdC}><RatingBadge value={r?.mosqueton_express || ''} /></td>
                     <td style={tdC}><RatingBadge value={r?.cierre_mosqueton || ''} /></td>
-                    <td style={{ ...td, fontSize: 7 }}>{r?.observaciones || ''}</td>
+                    <td style={td}>{r?.observaciones || ''}</td>
                   </tr>
                 )
               })}
@@ -573,12 +573,12 @@ function Firmas() {
 }
 
 const th: React.CSSProperties = {
-  padding: '8px 6px', fontSize: 10, fontWeight: 700, textAlign: 'center',
+  padding: '7px 6px', fontSize: 12, fontWeight: 700, textAlign: 'center',
   background: '#1e3a3a', color: 'white', whiteSpace: 'nowrap', border: '1px solid #2d5555',
 }
 const td: React.CSSProperties = {
-  padding: '5px 6px', borderBottom: '1px solid #eee', textAlign: 'left', fontSize: 9,
+  padding: '5px 6px', border: '1px solid #ccc', textAlign: 'left', fontSize: 12,
 }
 const tdC: React.CSSProperties = {
-  padding: '5px 6px', borderBottom: '1px solid #eee', textAlign: 'center', fontSize: 9,
+  padding: '5px 6px', border: '1px solid #ccc', textAlign: 'center', fontSize: 12,
 }

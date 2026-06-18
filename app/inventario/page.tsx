@@ -497,6 +497,8 @@ export default function InventarioPage() {
   const [cascos, setCascos] = useState<ModeloCasco[]>([])
   const [guantines, setGuantines] = useState<ModeloGuantin[]>([])
   const [lentes, setLentes] = useState<ModeloGuantin[]>([])
+  const [bolsitas, setBolsitas] = useState<ModeloGuantin[]>([])
+  const [fundas, setFundas] = useState<ModeloGuantin[]>([])
   const [cargado, setCargado] = useState(false)
   const [vistaControl, setVistaControl] = useState(false)
   const [esAdmin, setEsAdmin] = useState(false)
@@ -518,27 +520,35 @@ export default function InventarioPage() {
   const [formNuevoGuantin, setFormNuevoGuantin] = useState({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
   const [mostrarFormNuevoLente, setMostrarFormNuevoLente] = useState(false)
   const [formNuevoLente, setFormNuevoLente] = useState({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
+  const [mostrarFormNuevoBolsita, setMostrarFormNuevoBolsita] = useState(false)
+  const [formNuevoBolsita, setFormNuevoBolsita] = useState({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
+  const [mostrarFormNuevaFunda, setMostrarFormNuevaFunda] = useState(false)
+  const [formNuevaFunda, setFormNuevaFunda] = useState({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
   const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false)
   const [formNuevo, setFormNuevo] = useState({ modelo: '', marca: '', color: '', tirolesa: 0, parque: 0, deposito: 0, reparar: 0, nota: '' })
 
-  // Cargar desde localStorage al montar — solo usa demo si no hay datos guardados
   React.useEffect(() => {
     const g = localStorage.getItem('inv_guantines')
     const l = localStorage.getItem('inv_lentes')
     const c = localStorage.getItem('inv_cascos')
     const e = localStorage.getItem('inv_equipos')
+    const b = localStorage.getItem('inv_bolsitas')
+    const f = localStorage.getItem('inv_fundas')
     setGuantines(g ? JSON.parse(g) : [])
     setLentes(l ? JSON.parse(l) : [])
     setCascos(c ? JSON.parse(c) : [])
     setEquipos(e ? JSON.parse(e) : [])
+    setBolsitas(b ? JSON.parse(b) : [])
+    setFundas(f ? JSON.parse(f) : [])
     setCargado(true)
   }, [])
 
-  // Persistir cambios en localStorage
   React.useEffect(() => { if (cargado) localStorage.setItem('inv_guantines', JSON.stringify(guantines)) }, [guantines, cargado])
   React.useEffect(() => { if (cargado) localStorage.setItem('inv_lentes',    JSON.stringify(lentes))    }, [lentes,    cargado])
   React.useEffect(() => { if (cargado) localStorage.setItem('inv_cascos',    JSON.stringify(cascos))    }, [cascos,    cargado])
   React.useEffect(() => { if (cargado) localStorage.setItem('inv_equipos',   JSON.stringify(equipos))   }, [equipos,   cargado])
+  React.useEffect(() => { if (cargado) localStorage.setItem('inv_bolsitas',  JSON.stringify(bolsitas))  }, [bolsitas,  cargado])
+  React.useEffect(() => { if (cargado) localStorage.setItem('inv_fundas',    JSON.stringify(fundas))    }, [fundas,    cargado])
 
   const equiposFiltrados = equipos.filter(e => {
     if (filtroTipo !== 'todos' && e.tipo !== filtroTipo) return false
@@ -1061,6 +1071,90 @@ export default function InventarioPage() {
                 <ModuloCasco key={c.id} casco={c} accentColor="#3a9e96"
                   onUpdate={u => setCascos(prev => prev.map(x => x.id === u.id ? u : x))}
                   onDelete={id => setCascos(prev => prev.filter(x => x.id !== id))} />
+              ))}
+            </SeccionStock>
+
+            {/* BOLSITAS DE LENTES */}
+            <SeccionStock
+              icono="👜" titulo="Bolsitas de lentes"
+              total={bolsitas.reduce((s, b) => s + b.enUso + b.deposito + b.reparar, 0)}
+              modelos={bolsitas.length}
+              accentColor="#7c3aed"
+              mostrarForm={mostrarFormNuevoBolsita}
+              setMostrarForm={setMostrarFormNuevoBolsita}
+              formContent={
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    {[{ key: 'modelo', ph: 'Modelo *' }, { key: 'color', ph: 'Color' }].map(({ key, ph }) => (
+                      <input key={key} type="text" placeholder={ph} value={(formNuevoBolsita as Record<string, string | number>)[key] as string}
+                        onChange={e => setFormNuevoBolsita(f => ({ ...f, [key]: e.target.value }))}
+                        className="rounded-lg px-3 py-2 text-sm focus:outline-none" style={{ border: '1px solid #ddd8cf', background: '#faf8f4' }} />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[{ key: 'enUso', label: 'En uso', color: '#16a34a' }, { key: 'deposito', label: 'Depósito', color: '#7c3aed' }, { key: 'reparar', label: 'Reparar', color: '#e07060' }].map(({ key, label, color }) => (
+                      <div key={key} className="text-center">
+                        <p className="text-xs mb-1 font-medium" style={{ color }}>{label}</p>
+                        <input type="number" min={0} value={(formNuevoBolsita as Record<string, string | number>)[key] as number}
+                          onChange={e => setFormNuevoBolsita(f => ({ ...f, [key]: Math.max(0, Number(e.target.value)) }))}
+                          className="w-full text-center rounded-lg py-2 text-sm font-bold focus:outline-none" style={{ border: '1px solid #ddd8cf', background: '#faf8f4', color }} />
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => {
+                    if (!formNuevoBolsita.modelo) return
+                    setBolsitas(prev => [...prev, { id: Date.now().toString(), modelo: formNuevoBolsita.modelo, color: formNuevoBolsita.color, enUso: formNuevoBolsita.enUso, deposito: formNuevoBolsita.deposito, reparar: formNuevoBolsita.reparar, historial: formNuevoBolsita.nota ? [{ fecha: new Date().toISOString().split('T')[0], nota: formNuevoBolsita.nota, enUso: formNuevoBolsita.enUso, deposito: formNuevoBolsita.deposito, reparar: formNuevoBolsita.reparar }] : [] }])
+                    setFormNuevoBolsita({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
+                    setMostrarFormNuevoBolsita(false)
+                  }} className="w-full text-white text-sm font-bold py-2.5 rounded-xl" style={{ background: '#7c3aed' }}>Agregar modelo</button>
+                </div>
+              }>
+              {bolsitas.map(b => (
+                <ModuloGuantin key={b.id} guantin={b} accentColor="#7c3aed"
+                  onUpdate={u => setBolsitas(prev => prev.map(x => x.id === u.id ? u : x))}
+                  onDelete={id => setBolsitas(prev => prev.filter(x => x.id !== id))} />
+              ))}
+            </SeccionStock>
+
+            {/* FUNDAS DE HANDIS */}
+            <SeccionStock
+              icono="📻" titulo="Fundas de handis"
+              total={fundas.reduce((s, f) => s + f.enUso + f.deposito + f.reparar, 0)}
+              modelos={fundas.length}
+              accentColor="#0369a1"
+              mostrarForm={mostrarFormNuevaFunda}
+              setMostrarForm={setMostrarFormNuevaFunda}
+              formContent={
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    {[{ key: 'modelo', ph: 'Modelo *' }, { key: 'color', ph: 'Color' }].map(({ key, ph }) => (
+                      <input key={key} type="text" placeholder={ph} value={(formNuevaFunda as Record<string, string | number>)[key] as string}
+                        onChange={e => setFormNuevaFunda(f => ({ ...f, [key]: e.target.value }))}
+                        className="rounded-lg px-3 py-2 text-sm focus:outline-none" style={{ border: '1px solid #ddd8cf', background: '#faf8f4' }} />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[{ key: 'enUso', label: 'En uso', color: '#16a34a' }, { key: 'deposito', label: 'Depósito', color: '#0369a1' }, { key: 'reparar', label: 'Reparar', color: '#e07060' }].map(({ key, label, color }) => (
+                      <div key={key} className="text-center">
+                        <p className="text-xs mb-1 font-medium" style={{ color }}>{label}</p>
+                        <input type="number" min={0} value={(formNuevaFunda as Record<string, string | number>)[key] as number}
+                          onChange={e => setFormNuevaFunda(f => ({ ...f, [key]: Math.max(0, Number(e.target.value)) }))}
+                          className="w-full text-center rounded-lg py-2 text-sm font-bold focus:outline-none" style={{ border: '1px solid #ddd8cf', background: '#faf8f4', color }} />
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => {
+                    if (!formNuevaFunda.modelo) return
+                    setFundas(prev => [...prev, { id: Date.now().toString(), modelo: formNuevaFunda.modelo, color: formNuevaFunda.color, enUso: formNuevaFunda.enUso, deposito: formNuevaFunda.deposito, reparar: formNuevaFunda.reparar, historial: formNuevaFunda.nota ? [{ fecha: new Date().toISOString().split('T')[0], nota: formNuevaFunda.nota, enUso: formNuevaFunda.enUso, deposito: formNuevaFunda.deposito, reparar: formNuevaFunda.reparar }] : [] }])
+                    setFormNuevaFunda({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
+                    setMostrarFormNuevaFunda(false)
+                  }} className="w-full text-white text-sm font-bold py-2.5 rounded-xl" style={{ background: '#0369a1' }}>Agregar modelo</button>
+                </div>
+              }>
+              {fundas.map(f => (
+                <ModuloGuantin key={f.id} guantin={f} accentColor="#0369a1"
+                  onUpdate={u => setFundas(prev => prev.map(x => x.id === u.id ? u : x))}
+                  onDelete={id => setFundas(prev => prev.filter(x => x.id !== id))} />
               ))}
             </SeccionStock>
 

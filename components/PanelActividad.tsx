@@ -18,6 +18,9 @@ interface Ejecucion {
   repuestos?: string
   observaciones?: string
   archivo_nombre?: string
+  archivo_data?: string
+  agrimensor_nombre?: string
+  agrimensor_data?: string
 }
 
 interface Props {
@@ -66,6 +69,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     setPlanillaSeleccionada(p)
     setMostrarFormulario(false)
     setMostrarAdjuntarOriginal(false)
+    setMostrarHistorial(false)
     setExtrasAbierto(null)
     if (p) setTimeout(() => refDetalle.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
@@ -74,6 +78,8 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   const [ejecuciones, setEjecuciones] = useState<Ejecucion[]>([])
   const [form, setForm] = useState({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', controlo: '', ingeniero: '' })
   const [archivoFirmado, setArchivoFirmado] = useState<File | null>(null)
+  const [archivoAgrimensor, setArchivoAgrimensor] = useState<File | null>(null)
+  const [mostrarHistorial, setMostrarHistorial] = useState(false)
   const [configCargada, setConfigCargada] = useState(false)
   const [proximasFechas, setProximasFechas] = useState<Record<string, string>>({})
   const [archivosOriginales, setArchivosOriginales] = useState<Record<string, string>>({}) // codigo -> dataURL
@@ -107,6 +113,10 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     })
     setProximasFechas(fechas)
     setConfigCargada(true)
+
+    // Cargar ejecuciones guardadas
+    const rawEj = localStorage.getItem(`ejecuciones_${actividadId}`)
+    if (rawEj) setEjecuciones(JSON.parse(rawEj))
 
     // Cargar archivos originales guardados
     const raw = localStorage.getItem(`archivos_originales_${actividadId}`)
@@ -305,25 +315,47 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   function guardarEjecucion() {
     if (!planillaSeleccionada || !form.nombre) return
     const proxima = calcularProximaFecha(form.fecha, planillaSeleccionada.frecuencia)
-    const nueva: Ejecucion = {
-      id: Date.now().toString(),
-      planilla_id: planillaSeleccionada.codigo,
-      fecha: form.fecha,
-      proxima_fecha: proxima,
-      ejecutado_por: form.nombre,
-      controlo: form.controlo,
-      ingeniero: form.ingeniero,
-      tiempo_min: form.tiempo ? Number(form.tiempo) : undefined,
-      repuestos: form.repuestos,
-      observaciones: form.obs,
-      archivo_nombre: archivoFirmado?.name,
+
+    function leerArchivo(file: File | null): Promise<string | undefined> {
+      if (!file) return Promise.resolve(undefined)
+      return new Promise(resolve => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = () => resolve(undefined)
+        reader.readAsDataURL(file)
+      })
     }
-    setEjecuciones(prev => [...prev, nueva])
-    setProximasFechas(prev => ({ ...prev, [planillaSeleccionada.codigo]: proxima }))
-    setMostrarFormulario(false)
-    setForm({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', controlo: '', ingeniero: '' })
-    setArchivoFirmado(null)
-    alert(`✅ Registrado. Próxima ejecución: ${proxima}`)
+
+    Promise.all([leerArchivo(archivoFirmado), leerArchivo(archivoAgrimensor)]).then(([firmadoData, agrimensorData]) => {
+      const nueva: Ejecucion = {
+        id: Date.now().toString(),
+        planilla_id: planillaSeleccionada.codigo,
+        fecha: form.fecha,
+        proxima_fecha: proxima,
+        ejecutado_por: form.nombre,
+        controlo: form.controlo,
+        ingeniero: form.ingeniero,
+        tiempo_min: form.tiempo ? Number(form.tiempo) : undefined,
+        repuestos: form.repuestos,
+        observaciones: form.obs,
+        archivo_nombre: archivoFirmado?.name,
+        archivo_data: firmadoData,
+        agrimensor_nombre: archivoAgrimensor?.name,
+        agrimensor_data: agrimensorData,
+      }
+      setEjecuciones(prev => {
+        const nuevas = [...prev, nueva]
+        localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
+        return nuevas
+      })
+      setProximasFechas(prev => ({ ...prev, [planillaSeleccionada.codigo]: proxima }))
+      setMostrarFormulario(false)
+      setMostrarHistorial(false)
+      setForm({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', controlo: '', ingeniero: '' })
+      setArchivoFirmado(null)
+      setArchivoAgrimensor(null)
+      alert(`✅ Registrado. Próxima ejecución: ${proxima}`)
+    })
   }
 
   // Días del mes con planillas — cada entrada guarda lista de { codigo, color, estado }
@@ -768,10 +800,16 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
             )}
 
             <div className="flex gap-2 mt-4">
-              <button onClick={() => { setMostrarFormulario(true); setMostrarAdjuntarOriginal(false) }}
+              <button onClick={() => { setMostrarFormulario(true); setMostrarAdjuntarOriginal(false); setMostrarHistorial(false) }}
                 className="flex-1 text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90"
                 style={{ backgroundColor: '#16a34a' }}>
                 ✓ Registrar que se realizó
+              </button>
+              <button
+                onClick={() => setMostrarHistorial(h => !h)}
+                className="px-3 py-2.5 rounded-xl text-sm flex items-center gap-1.5 font-semibold"
+                style={{ background: mostrarHistorial ? '#1e3a3a' : '#f3f4f6', color: mostrarHistorial ? 'white' : '#4b5563' }}>
+                🕘 <span className="text-xs">Historial</span>
               </button>
               <button onClick={() => abrirArchivoOriginal(planillaSeleccionada.codigo)}
                 className="px-3 py-2.5 text-white rounded-xl text-sm flex items-center gap-1.5" style={{ background: '#2d4a4a' }}
@@ -779,6 +817,68 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                 🖨️ <span className="text-xs">Planilla</span>
               </button>
             </div>
+
+            {/* Historial de ejecuciones */}
+            {mostrarHistorial && (() => {
+              const ejPlanilla = ejecuciones
+                .filter(e => e.planilla_id === planillaSeleccionada.codigo)
+                .sort((a, b) => b.fecha.localeCompare(a.fecha))
+              return (
+                <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1px solid #e5e7eb' }}>
+                  <div className="flex items-center justify-between px-3 py-2" style={{ background: '#1e3a3a' }}>
+                    <span className="text-white text-xs font-bold">Historial de ejecuciones</span>
+                    <span className="text-white/50 text-xs">{ejPlanilla.length} registro{ejPlanilla.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  {ejPlanilla.length === 0 ? (
+                    <div className="px-4 py-5 text-center text-xs text-gray-400">
+                      Sin registros aún. Usá &quot;Registrar que se realizó&quot; para cargar el primero.
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {ejPlanilla.map(ej => (
+                        <div key={ej.id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold text-gray-800">
+                                  {new Date(ej.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                </span>
+                                <span className="text-xs text-gray-500">— {ej.ejecutado_por}</span>
+                                {ej.controlo && <span className="text-xs text-gray-400">· Controló: {ej.controlo}</span>}
+                                {ej.tiempo_min && <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{ej.tiempo_min} min</span>}
+                              </div>
+                              {ej.ingeniero && <p className="text-xs text-gray-400 mt-0.5">Ing: {ej.ingeniero}</p>}
+                              {ej.repuestos && <p className="text-xs text-gray-500 mt-0.5">🔩 {ej.repuestos}</p>}
+                              {ej.observaciones && <p className="text-xs text-gray-600 mt-0.5 italic">"{ej.observaciones}"</p>}
+                              <div className="flex gap-2 mt-1.5 flex-wrap">
+                                {ej.archivo_data && (
+                                  <a href={ej.archivo_data} download={ej.archivo_nombre || 'planilla-firmada.pdf'}
+                                    className="text-xs flex items-center gap-1 text-green-600 hover:underline">
+                                    📎 {ej.archivo_nombre || 'Planilla firmada'}
+                                  </a>
+                                )}
+                                {ej.agrimensor_data && (
+                                  <a href={ej.agrimensor_data} download={ej.agrimensor_nombre || 'mediciones.pdf'}
+                                    className="text-xs flex items-center gap-1 text-blue-600 hover:underline">
+                                    📐 {ej.agrimensor_nombre || 'Mediciones agrimensor'}
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-xs text-gray-400">Próxima:</p>
+                              <p className="text-xs font-semibold text-gray-600">
+                                {new Date(ej.proxima_fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
               <span className="text-xs text-gray-400">
@@ -846,6 +946,17 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                   <span className="flex-1 truncate text-xs">{archivoFirmado ? archivoFirmado.name : 'Planilla firmada por el ingeniero'}</span>
                   {archivoFirmado && <button type="button" onClick={e => { e.preventDefault(); setArchivoFirmado(null) }} className="text-red-400 text-xs">✕</button>}
                   <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setArchivoFirmado(e.target.files?.[0] ?? null)} />
+                </label>
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-medium text-gray-600">Mediciones del agrimensor (PDF)</label>
+                <label className={`mt-0.5 flex items-center gap-2 cursor-pointer border-2 border-dashed rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                  archivoAgrimensor ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                }`}>
+                  <span>{archivoAgrimensor ? '📐' : '📏'}</span>
+                  <span className="flex-1 truncate text-xs">{archivoAgrimensor ? archivoAgrimensor.name : 'Informe de mediciones del agrimensor'}</span>
+                  {archivoAgrimensor && <button type="button" onClick={e => { e.preventDefault(); setArchivoAgrimensor(null) }} className="text-red-400 text-xs">✕</button>}
+                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setArchivoAgrimensor(e.target.files?.[0] ?? null)} />
                 </label>
               </div>
             </div>

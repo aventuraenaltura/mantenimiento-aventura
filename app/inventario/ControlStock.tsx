@@ -210,7 +210,7 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ background: '#1e3a3a', color: '#fff' }}>
-                <th style={th}>N°</th>
+                <th style={{ ...th, width: 36, minWidth: 36 }}>N°</th>
                 <th style={th}>Marca</th>
                 <th style={th}>Modelo</th>
                 <th style={th}>N° Serie</th>
@@ -233,7 +233,7 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
                 const r = regArneses[eq.id]
                 return (
                   <tr key={eq.id} style={{ background: idx % 2 === 0 ? '#f5f5f5' : '#fff' }}>
-                    <td style={td}>{eq.numero_interno}</td>
+                    <td style={{ ...td, width: 36, textAlign: 'center' }}>{eq.numero_interno}</td>
                     <td style={td}>{eq.marca}</td>
                     <td style={td}>{eq.modelo}</td>
                     <td style={{ ...td, fontFamily: 'monospace' }}>{eq.numero_serie}</td>
@@ -291,7 +291,7 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ background: '#1e3a3a', color: '#fff' }}>
-                <th style={th}>N°</th>
+                <th style={{ ...th, width: 36, minWidth: 36 }}>N°</th>
                 <th style={th}>Marca</th>
                 <th style={th}>Modelo</th>
                 <th style={th}>N° Serie</th>
@@ -313,7 +313,7 @@ export default function ControlStock({ equipos, onVolver, onGuardar, esAdmin }: 
                 const r = regPoleas[eq.id]
                 return (
                   <tr key={eq.id} style={{ background: idx % 2 === 0 ? '#f5f5f5' : '#fff' }}>
-                    <td style={td}>{eq.numero_interno}</td>
+                    <td style={{ ...td, width: 36, textAlign: 'center' }}>{eq.numero_interno}</td>
                     <td style={td}>{eq.marca}</td>
                     <td style={td}>{eq.modelo}</td>
                     <td style={{ ...td, fontFamily: 'monospace' }}>{eq.numero_serie}</td>

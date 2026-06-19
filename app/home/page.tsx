@@ -7,9 +7,9 @@ import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
 
 const ACTIVIDADES = [
   { slug: 'tirolesa', nombre: 'Tirolesa',          logo: '/logos/tirolesa.png',  color: '#F5C800', textColor: '#1a1a1a' },
-  { slug: 'arqueria', nombre: 'Arquería',           logo: '/logos/arqueria.png',  color: '#C8956A', textColor: '#ffffff' },
+  { slug: 'arqueria', nombre: 'Arquería',           logo: '/logos/arqueria.png',  color: '#2d8a4e', textColor: '#ffffff' },
   { slug: 'parque',   nombre: 'Parque Aéreo',       logo: '/logos/parque.png',    color: '#4FC3F7', textColor: '#1a1a1a' },
-  { slug: 'salon',    nombre: 'Aventura Escondida', logo: '/logos/escondida.png', color: '#6B8E5A', textColor: '#ffffff' },
+  { slug: 'salon',    nombre: 'Aventura Escondida', logo: '/logos/escondida.png', color: '#e07820', textColor: '#ffffff' },
 ]
 
 function calcularAlertas(actividadSlug: string): number {

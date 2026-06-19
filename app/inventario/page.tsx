@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import ControlStock from './ControlStock'
 import ImportarStockInicial from '@/components/ImportarStockInicial'
+import RegistrarReparacion from '@/components/RegistrarReparacion'
 
 type TipoEquipo = 'arnes' | 'polea' | 'casco' | 'mosqueton' | 'guantin'
 type Ubicacion = 'en_uso' | 'deposito' | 'para_reparar' | 'baja'
@@ -503,6 +504,7 @@ export default function InventarioPage() {
   const [cargado, setCargado] = useState(false)
   const [vistaControl, setVistaControl] = useState(false)
   const [mostrarStockInicial, setMostrarStockInicial] = useState(false)
+  const [mostrarReparacion, setMostrarReparacion] = useState(false)
   const [esAdmin, setEsAdmin] = useState(false)
 
   React.useEffect(() => {
@@ -850,6 +852,12 @@ export default function InventarioPage() {
                   📦 Stock inicial
                 </button>
               )}
+              {/* Registrar Reparaciones */}
+              <button onClick={() => setMostrarReparacion(true)}
+                className="flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-xl"
+                style={{ background: '#1d4ed8', border: 'none', color: 'white', boxShadow: '0 2px 8px rgba(29,78,216,0.4)' }}>
+                🔧 Registrar Reparaciones
+              </button>
               {/* Control de Stock */}
               <button onClick={() => setVistaControl(true)}
                 className="flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-xl"
@@ -1286,6 +1294,17 @@ export default function InventarioPage() {
           equipos={equipos.filter(e => e.tipo === 'arnes' || e.tipo === 'polea')}
           onCerrar={() => setMostrarStockInicial(false)}
           onExito={() => { setMostrarStockInicial(false); window.location.href = '/fichas' }}
+        />
+      )}
+
+      {/* Modal registrar reparaciones */}
+      {mostrarReparacion && (
+        <RegistrarReparacion
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          equipos={equipos.filter(e => e.tipo === 'arnes' || e.tipo === 'polea') as any}
+          onCerrar={() => setMostrarReparacion(false)}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onGuardar={(equiposAct: any[]) => setEquipos(prev => prev.map(e => equiposAct.find((a: any) => a.id === e.id) ?? e))}
         />
       )}
     </div>

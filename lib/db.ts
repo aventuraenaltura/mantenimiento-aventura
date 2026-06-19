@@ -47,6 +47,42 @@ export async function actualizarEjecucion(id: string, campos: object) {
   return !error
 }
 
+// ── FICHAS DE EQUIPO ─────────────────────────────────────────────────
+
+export async function fichasExisten() {
+  const { count } = await supabase.from('fichas_equipo').select('*', { count: 'exact', head: true })
+  return (count ?? 0) > 0
+}
+
+export async function importarStockInicial(equipos: Record<string, unknown>[]) {
+  const fichas = equipos.map(e => ({
+    id: e.id as string,
+    numero_ficha: (e.numero_serie as string) || (e.numero_interno as string),
+    tipo: e.tipo,
+    numero_interno: e.numero_interno,
+    marca: e.marca,
+    modelo: e.modelo,
+    numero_serie: e.numero_serie,
+    actividad: e.actividad,
+    uso_actual: e.uso_actual,
+    fecha_ingreso: e.fecha_ingreso || new Date().toISOString().split('T')[0],
+    observaciones: e.observaciones,
+    estado: 'alta',
+  }))
+  const { error } = await supabase.from('fichas_equipo').upsert(fichas, { onConflict: 'id' })
+  return !error
+}
+
+export async function guardarControlStock(sesion: {
+  id: string; fecha: string; realizado_por: string; tipo: string
+}, items: { ficha_id: string; uso_actual: string; ratings: Record<string, string>; observaciones: string }[]) {
+  const { error: e1 } = await supabase.from('controles_stock').insert(sesion)
+  if (e1) return false
+  const rows = items.map((item, i) => ({ id: `${sesion.id}_${i}`, control_id: sesion.id, ...item }))
+  const { error: e2 } = await supabase.from('control_items').insert(rows)
+  return !e2
+}
+
 // ── CONFIG FECHAS ─────────────────────────────────────────────────────
 
 export async function cargarConfigFechas() {

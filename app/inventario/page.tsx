@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import ControlStock from './ControlStock'
+import ImportarStockInicial from '@/components/ImportarStockInicial'
 
 type TipoEquipo = 'arnes' | 'polea' | 'casco' | 'mosqueton' | 'guantin'
 type Ubicacion = 'en_uso' | 'deposito' | 'para_reparar' | 'baja'
@@ -501,6 +502,7 @@ export default function InventarioPage() {
   const [fundas, setFundas] = useState<ModeloGuantin[]>([])
   const [cargado, setCargado] = useState(false)
   const [vistaControl, setVistaControl] = useState(false)
+  const [mostrarStockInicial, setMostrarStockInicial] = useState(false)
   const [esAdmin, setEsAdmin] = useState(false)
 
   React.useEffect(() => {
@@ -825,14 +827,28 @@ export default function InventarioPage() {
                   </div>
                 </div>
               </div>
-              {/* Importar Excel — solo admin */}
+              {/* Ver fichas */}
+              <Link href="/fichas"
+                className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl"
+                style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', color: 'white' }}>
+                📋 Ver fichas
+              </Link>
+              {/* Importar mantenimiento — solo admin */}
               {esAdmin && (
                 <label className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl cursor-pointer"
                   style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', color: 'white' }}>
-                  📥 Importar Excel
+                  📥 Importar mantenimiento
                   <input type="file" accept=".xlsx,.xls" className="hidden"
                     onChange={e => { const f = e.target.files?.[0]; if (f) importarExcel(f); e.target.value = '' }} />
                 </label>
+              )}
+              {/* Stock inicial — solo admin, solo si hay equipos cargados */}
+              {esAdmin && equipos.length > 0 && (
+                <button onClick={() => setMostrarStockInicial(true)}
+                  className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl"
+                  style={{ background: 'rgba(245,158,11,0.25)', border: '1px solid rgba(245,158,11,0.5)', color: '#fde68a' }}>
+                  📦 Stock inicial
+                </button>
               )}
               {/* Control de Stock */}
               <button onClick={() => setVistaControl(true)}
@@ -1263,6 +1279,15 @@ export default function InventarioPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal stock inicial */}
+      {mostrarStockInicial && (
+        <ImportarStockInicial
+          equipos={equipos.filter(e => e.tipo === 'arnes' || e.tipo === 'polea')}
+          onCerrar={() => setMostrarStockInicial(false)}
+          onExito={() => { setMostrarStockInicial(false); window.location.href = '/fichas' }}
+        />
+      )}
     </div>
   )
 }

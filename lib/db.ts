@@ -3,15 +3,20 @@ import { supabase } from './supabase'
 
 // ── EQUIPOS ──────────────────────────────────────────────────────────
 
-export async function cargarEquipos() {
-  const { data, error } = await supabase.from('equipos').select('*').order('numero_interno')
+export async function cargarEquipos(sector?: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let q: any = supabase.from('equipos').select('*').order('numero_interno')
+  if (sector) q = q.eq('sector', sector)
+  const { data, error } = await q
   if (error) return null
   return data
 }
 
-export async function guardarEquipos(equipos: object[]) {
-  // Upsert completo — reemplaza todo
-  const { error } = await supabase.from('equipos').upsert(equipos as never[], { onConflict: 'id' })
+export async function guardarEquipos(equipos: object[], sector?: string) {
+  const rows = sector
+    ? (equipos as Record<string, unknown>[]).map(e => ({ ...e, sector }))
+    : equipos
+  const { error } = await supabase.from('equipos').upsert(rows as never[], { onConflict: 'id' })
   return !error
 }
 

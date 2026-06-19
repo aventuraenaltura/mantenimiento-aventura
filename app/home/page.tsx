@@ -218,19 +218,32 @@ export default function HomePage() {
           </Link>
         )}
 
+        {/* Equipo Técnico — panel visual unificado */}
+        <Link href="/equipo-tecnico">
+          <div className="rounded-2xl p-5 flex items-center gap-4 mb-6 cursor-pointer hover:opacity-95 transition-opacity"
+            style={{ background: 'linear-gradient(135deg, #1a3a5c 0%, #1d4ed8 100%)', color: 'white' }}>
+            <span className="text-3xl">🎽</span>
+            <div>
+              <p className="font-bold text-base">Equipo Técnico</p>
+              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.65)' }}>Panel con todo el stock de equipos — arneses, poleas y accesorios de todos los sectores</p>
+            </div>
+            <span className="ml-auto text-xl" style={{ color: 'rgba(255,255,255,0.4)' }}>→</span>
+          </div>
+        </Link>
+
         {/* Accesos rápidos */}
         <h2 className="text-lg font-semibold mb-4" style={{ color: '#2d3a2e' }}>Accesos rápidos</h2>
         <div className="grid grid-cols-3 gap-3">
-          <Link href="/inventario">
-            <div className="rounded-xl p-4 flex items-center gap-3 hover:shadow-sm transition-shadow cursor-pointer" style={{ background: '#fff', border: '1px solid #ddd8cf' }}>
-              <span className="text-2xl">🎽</span>
-              <span className="text-sm font-medium" style={{ color: '#2d3a2e' }}>Inventario de Equipos</span>
-            </div>
-          </Link>
           <Link href="/biblioteca">
             <div className="rounded-xl p-4 flex items-center gap-3 hover:shadow-sm transition-shadow cursor-pointer" style={{ background: '#fff', border: '1px solid #ddd8cf' }}>
               <span className="text-2xl">📚</span>
               <span className="text-sm font-medium" style={{ color: '#2d3a2e' }}>Biblioteca Técnica</span>
+            </div>
+          </Link>
+          <Link href="/fichas">
+            <div className="rounded-xl p-4 flex items-center gap-3 hover:shadow-sm transition-shadow cursor-pointer" style={{ background: '#fff', border: '1px solid #ddd8cf' }}>
+              <span className="text-2xl">📋</span>
+              <span className="text-sm font-medium" style={{ color: '#2d3a2e' }}>Fichas de Equipo</span>
             </div>
           </Link>
           {usuario.rol === 'admin' && (

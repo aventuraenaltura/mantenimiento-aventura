@@ -709,6 +709,12 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
           <p className="text-sm opacity-80 font-medium">{planillas.length} planillas</p>
         </div>
         <div className="flex items-center gap-3">
+          {['tirolesa', 'parque', 'arqueria'].includes(actividadId) && (
+            <Link href={`/inventario/${actividadId}`}
+              className="text-sm flex items-center gap-1.5 bg-white/90 hover:bg-white text-gray-800 font-semibold rounded-xl px-4 py-2 shadow-sm transition-colors">
+              🎽 Equipos
+            </Link>
+          )}
           <Link href="/config" className="text-sm flex items-center gap-1.5 bg-white/90 hover:bg-white text-gray-800 font-semibold rounded-xl px-4 py-2 shadow-sm transition-colors">
             ⚙️ Configurar fechas
           </Link>

@@ -494,7 +494,15 @@ function SeccionStock({ icono, titulo, total, modelos, accentColor, mostrarForm,
   )
 }
 
-export default function InventarioPage() {
+const SECTOR_INFO: Record<string, { nombre: string; icono: string }> = {
+  tirolesa: { nombre: 'Tirolesa', icono: '🪂' },
+  parque:   { nombre: 'Parque Aéreo', icono: '🌲' },
+  arqueria: { nombre: 'Arquería', icono: '🎯' },
+  general:  { nombre: 'General', icono: '🎽' },
+}
+
+export default function InventarioPage({ sector = 'tirolesa' }: { sector?: string }) {
+  const sectorInfo = SECTOR_INFO[sector] ?? SECTOR_INFO.general
   const [equipos, setEquipos] = useState<Equipo[]>([])
   const [cascos, setCascos] = useState<ModeloCasco[]>([])
   const [guantines, setGuantines] = useState<ModeloGuantin[]>([])
@@ -534,11 +542,11 @@ export default function InventarioPage() {
   React.useEffect(() => {
     async function cargar() {
       // Accesorios — localStorage (no críticos para sincronización entre dispositivos)
-      const g = localStorage.getItem('inv_guantines')
-      const l = localStorage.getItem('inv_lentes')
-      const c = localStorage.getItem('inv_cascos')
-      const b = localStorage.getItem('inv_bolsitas')
-      const f = localStorage.getItem('inv_fundas')
+      const g = localStorage.getItem(`inv_${sector}_guantines`)
+      const l = localStorage.getItem(`inv_${sector}_lentes`)
+      const c = localStorage.getItem(`inv_${sector}_cascos`)
+      const b = localStorage.getItem(`inv_${sector}_bolsitas`)
+      const f = localStorage.getItem(`inv_${sector}_fundas`)
       setGuantines(g ? JSON.parse(g) : [])
       setLentes(l ? JSON.parse(l) : [])
       setCascos(c ? JSON.parse(c) : [])
@@ -548,16 +556,16 @@ export default function InventarioPage() {
       // Equipos (arneses/poleas) — Supabase primero, localStorage como fallback
       try {
         const { cargarEquipos } = await import('@/lib/db')
-        const data = await cargarEquipos()
+        const data = await cargarEquipos(sector)
         if (data && data.length > 0) {
           setEquipos(data as Equipo[])
-          localStorage.setItem('inv_equipos', JSON.stringify(data))
+          localStorage.setItem(`inv_${sector}_equipos`, JSON.stringify(data))
         } else {
-          const e = localStorage.getItem('inv_equipos')
+          const e = localStorage.getItem(`inv_${sector}_equipos`)
           setEquipos(e ? JSON.parse(e) : [])
         }
       } catch {
-        const e = localStorage.getItem('inv_equipos')
+        const e = localStorage.getItem(`inv_${sector}_equipos`)
         setEquipos(e ? JSON.parse(e) : [])
       }
       setCargado(true)
@@ -565,17 +573,17 @@ export default function InventarioPage() {
     cargar()
   }, [])
 
-  React.useEffect(() => { if (cargado) localStorage.setItem('inv_guantines', JSON.stringify(guantines)) }, [guantines, cargado])
-  React.useEffect(() => { if (cargado) localStorage.setItem('inv_lentes',    JSON.stringify(lentes))    }, [lentes,    cargado])
-  React.useEffect(() => { if (cargado) localStorage.setItem('inv_cascos',    JSON.stringify(cascos))    }, [cascos,    cargado])
-  React.useEffect(() => { if (cargado) localStorage.setItem('inv_bolsitas',  JSON.stringify(bolsitas))  }, [bolsitas,  cargado])
-  React.useEffect(() => { if (cargado) localStorage.setItem('inv_fundas',    JSON.stringify(fundas))    }, [fundas,    cargado])
+  React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_guantines`, JSON.stringify(guantines)) }, [guantines, cargado, sector])
+  React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_lentes`,    JSON.stringify(lentes))    }, [lentes,    cargado, sector])
+  React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_cascos`,    JSON.stringify(cascos))    }, [cascos,    cargado, sector])
+  React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_bolsitas`,  JSON.stringify(bolsitas))  }, [bolsitas,  cargado, sector])
+  React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_fundas`,    JSON.stringify(fundas))    }, [fundas,    cargado, sector])
   // Equipos: sync a Supabase cuando cambian
   React.useEffect(() => {
     if (!cargado || equipos.length === 0) return
-    localStorage.setItem('inv_equipos', JSON.stringify(equipos))
-    import('@/lib/db').then(({ guardarEquipos }) => guardarEquipos(equipos))
-  }, [equipos, cargado])
+    localStorage.setItem(`inv_${sector}_equipos`, JSON.stringify(equipos))
+    import('@/lib/db').then(({ guardarEquipos }) => guardarEquipos(equipos, sector))
+  }, [equipos, cargado, sector])
 
   const equiposFiltrados = equipos.filter(e => {
     if (filtroTipo !== 'todos' && e.tipo !== filtroTipo) return false
@@ -783,11 +791,11 @@ export default function InventarioPage() {
         <div className="max-w-6xl mx-auto px-6 py-5">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-4">
-              <Link href="/home" className="w-9 h-9 rounded-xl flex items-center justify-center text-white"
+              <Link href={`/${sector}`} className="w-9 h-9 rounded-xl flex items-center justify-center text-white"
                 style={{ background: 'rgba(255,255,255,0.12)' }}>←</Link>
               <div>
-                <h1 className="font-bold text-xl tracking-tight">Inventario de Equipos</h1>
-                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>Complejo Aerosilla · Villa Carlos Paz</p>
+                <h1 className="font-bold text-xl tracking-tight">{sectorInfo.icono} {sectorInfo.nombre} — Equipos de Seguridad</h1>
+                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>Inventario independiente por sector</p>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap">

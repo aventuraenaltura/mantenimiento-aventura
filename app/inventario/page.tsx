@@ -494,6 +494,15 @@ function SeccionStock({ icono, titulo, total, modelos, accentColor, mostrarForm,
   )
 }
 
+const ACCESORIOS_ARQ = [
+  { slug: 'protBrazo',  label: 'Protectores de brazo',      icono: '💪', color: '#7c3aed' },
+  { slug: 'protDedo',   label: 'Protectores dedo TAB',      icono: '🖐️', color: '#0369a1' },
+  { slug: 'parchesOjo', label: 'Parches de ojo',            icono: '👁️', color: '#dc2626' },
+  { slug: 'carcaj',     label: 'Carcaj de piso',            icono: '🏹', color: '#92400e' },
+  { slug: 'contNino',   label: 'Contenciones de niño',      icono: '🧸', color: '#059669' },
+  { slug: 'paneles',    label: 'Paneles de contención gde.', icono: '🛡️', color: '#374151' },
+]
+
 const SECTOR_INFO: Record<string, { nombre: string; icono: string }> = {
   tirolesa: { nombre: 'Tirolesa', icono: '🪂' },
   parque:   { nombre: 'Parque Aéreo', icono: '🌲' },
@@ -528,6 +537,11 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
   const [formEvento, setFormEvento] = useState({ fecha: new Date().toISOString().split('T')[0], accion: '', por: '' })
   const [mostrarFormEvento, setMostrarFormEvento] = useState(false)
 
+  // Arquería: accesorios específicos del sector
+  const [accArq, setAccArq] = useState<Record<string, ModeloGuantin[]>>({})
+  const [mostrarFormArq, setMostrarFormArq] = useState<string | null>(null)
+  const [formArq, setFormArq] = useState({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
+
   const [mostrarFormNuevoGuantin, setMostrarFormNuevoGuantin] = useState(false)
   const [formNuevoGuantin, setFormNuevoGuantin] = useState({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
   const [mostrarFormNuevoLente, setMostrarFormNuevoLente] = useState(false)
@@ -553,6 +567,16 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
       setBolsitas(b ? JSON.parse(b) : [])
       setFundas(f ? JSON.parse(f) : [])
 
+      // Arquería: cargar accesorios específicos
+      if (sector === 'arqueria') {
+        const loaded: Record<string, ModeloGuantin[]> = {}
+        for (const a of ACCESORIOS_ARQ) {
+          const raw = localStorage.getItem(`inv_${sector}_${a.slug}`)
+          loaded[a.slug] = raw ? JSON.parse(raw) : []
+        }
+        setAccArq(loaded)
+      }
+
       // Equipos (arneses/poleas) — Supabase primero, localStorage como fallback
       try {
         const { cargarEquipos } = await import('@/lib/db')
@@ -573,6 +597,12 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
     cargar()
   }, [])
 
+  React.useEffect(() => {
+    if (!cargado || sector !== 'arqueria' || Object.keys(accArq).length === 0) return
+    for (const a of ACCESORIOS_ARQ) {
+      localStorage.setItem(`inv_${sector}_${a.slug}`, JSON.stringify(accArq[a.slug] ?? []))
+    }
+  }, [accArq, cargado, sector])
   React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_guantines`, JSON.stringify(guantines)) }, [guantines, cargado, sector])
   React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_lentes`,    JSON.stringify(lentes))    }, [lentes,    cargado, sector])
   React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_cascos`,    JSON.stringify(cascos))    }, [cascos,    cargado, sector])
@@ -1007,6 +1037,70 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
           {/* DERECHA: stock por categoría + detalle */}
           <div className="space-y-4">
 
+            {/* ── ACCESORIOS: condicional por sector ── */}
+            {sector === 'arqueria' ? (
+              <>
+                {ACCESORIOS_ARQ.map(a => {
+                  const items = accArq[a.slug] ?? []
+                  return (
+                    <SeccionStock
+                      key={a.slug}
+                      icono={a.icono} titulo={a.label}
+                      total={items.reduce((s, g) => s + g.enUso + g.deposito + g.reparar, 0)}
+                      modelos={items.length}
+                      accentColor={a.color}
+                      mostrarForm={mostrarFormArq === a.slug}
+                      setMostrarForm={(v) => { setMostrarFormArq(v ? a.slug : null); setFormArq({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' }) }}
+                      formContent={
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <input type="text" placeholder="Descripción *" value={formArq.modelo}
+                              onChange={e => setFormArq(f => ({ ...f, modelo: e.target.value }))}
+                              className="rounded-lg px-3 py-2 text-sm focus:outline-none" style={{ border: '1px solid #ddd8cf', background: '#faf8f4' }} />
+                            <input type="text" placeholder="Color / Talle" value={formArq.color}
+                              onChange={e => setFormArq(f => ({ ...f, color: e.target.value }))}
+                              className="rounded-lg px-3 py-2 text-sm focus:outline-none" style={{ border: '1px solid #ddd8cf', background: '#faf8f4' }} />
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[{ key: 'enUso', label: 'En uso', color: '#22c55e' }, { key: 'deposito', label: 'Depósito', color: '#3b82f6' }, { key: 'reparar', label: 'Reparar', color: '#f97316' }].map(({ key, label, color }) => (
+                              <div key={key} className="text-center">
+                                <p className="text-xs mb-1 font-medium" style={{ color }}>{label}</p>
+                                <input type="number" min={0} value={(formArq as Record<string, number | string>)[key] as number}
+                                  onChange={e => setFormArq(f => ({ ...f, [key]: Math.max(0, Number(e.target.value)) }))}
+                                  className="w-full text-center rounded-lg py-2 text-sm font-bold focus:outline-none" style={{ border: '1px solid #ddd8cf', background: '#faf8f4', color }} />
+                              </div>
+                            ))}
+                          </div>
+                          <input type="text" placeholder="Nota inicial" value={formArq.nota}
+                            onChange={e => setFormArq(f => ({ ...f, nota: e.target.value }))}
+                            className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none" style={{ border: '1px solid #ddd8cf', background: '#faf8f4' }} />
+                          <button onClick={() => {
+                            if (!formArq.modelo) return
+                            const nuevo: ModeloGuantin = {
+                              id: Date.now().toString(),
+                              modelo: formArq.modelo, color: formArq.color,
+                              enUso: formArq.enUso, deposito: formArq.deposito, reparar: formArq.reparar,
+                              historial: formArq.nota ? [{ fecha: new Date().toISOString().split('T')[0], nota: formArq.nota, enUso: formArq.enUso, deposito: formArq.deposito, reparar: formArq.reparar }] : [],
+                            }
+                            setAccArq(prev => ({ ...prev, [a.slug]: [...(prev[a.slug] ?? []), nuevo] }))
+                            setFormArq({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
+                            setMostrarFormArq(null)
+                          }} className="w-full text-white text-sm font-bold py-2.5 rounded-xl" style={{ background: a.color }}>
+                            Agregar
+                          </button>
+                        </div>
+                      }>
+                      {items.map(g => (
+                        <ModuloGuantin key={g.id} guantin={g} accentColor={a.color}
+                          onUpdate={u => setAccArq(prev => ({ ...prev, [a.slug]: (prev[a.slug] ?? []).map(x => x.id === u.id ? u : x) }))}
+                          onDelete={id => setAccArq(prev => ({ ...prev, [a.slug]: (prev[a.slug] ?? []).filter(x => x.id !== id) }))} />
+                      ))}
+                    </SeccionStock>
+                  )
+                })}
+              </>
+            ) : (
+              <>
             {/* GUANTINES */}
             <SeccionStock
               icono="🧤" titulo="Guantines de cuero"
@@ -1212,6 +1306,8 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                   onDelete={id => setFundas(prev => prev.filter(x => x.id !== id))} />
               ))}
             </SeccionStock>
+              </>
+            )}
 
             {/* Detalle equipo seleccionado */}
             {equipoSeleccionado ? (

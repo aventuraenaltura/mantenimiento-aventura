@@ -5,11 +5,11 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
 
-const ACTIVIDADES_BASE = [
-  { slug: 'tirolesa',  nombre: 'Tirolesa',          logo: '/logos/tirolesa.png',  color: '#F5C800', textColor: '#1a1a1a' },
-  { slug: 'arqueria',  nombre: 'Arquería',           logo: '/logos/arqueria.png',  color: '#C8956A', textColor: '#ffffff' },
-  { slug: 'parque',    nombre: 'Parque Aéreo',       logo: '/logos/parque.png',    color: '#4FC3F7', textColor: '#1a1a1a' },
-  { slug: 'salon',     nombre: 'Aventura Escondida', logo: '/logos/escondida.png', color: '#6B8E5A', textColor: '#ffffff' },
+const ACTIVIDADES = [
+  { slug: 'tirolesa', nombre: 'Tirolesa',          logo: '/logos/tirolesa.png',  color: '#F5C800', textColor: '#1a1a1a' },
+  { slug: 'arqueria', nombre: 'Arquería',           logo: '/logos/arqueria.png',  color: '#C8956A', textColor: '#ffffff' },
+  { slug: 'parque',   nombre: 'Parque Aéreo',       logo: '/logos/parque.png',    color: '#4FC3F7', textColor: '#1a1a1a' },
+  { slug: 'salon',    nombre: 'Aventura Escondida', logo: '/logos/escondida.png', color: '#6B8E5A', textColor: '#ffffff' },
 ]
 
 function calcularAlertas(actividadSlug: string): number {
@@ -24,57 +24,50 @@ function calcularAlertas(actividadSlug: string): number {
       const fechaStr = fechas[p.codigo]
       if (!fechaStr) continue
       const inicio = new Date(fechaStr)
-      const mesesPorFrecuencia: Record<string, number> = {
-        diario: 0, semanal: 0, mensual: 1, trimestral: 3, semestral: 6, anual: 12
-      }
-      const meses = mesesPorFrecuencia[p.frecuencia] ?? 1
+      const meses: Record<string, number> = { diario: 0, semanal: 0, mensual: 1, trimestral: 3, semestral: 6, anual: 12 }
       const vence = new Date(inicio)
-      vence.setMonth(vence.getMonth() + meses)
+      vence.setMonth(vence.getMonth() + (meses[p.frecuencia] ?? 1))
       if (vence < hoy) alertas++
     }
     return alertas
   } catch { return 0 }
 }
 
-const ANIO_INICIO = 2011
-
 export default function HomePage() {
   const router = useRouter()
   const [usuario, setUsuario] = useState<{ nombre: string; rol: string } | null>(null)
   const [anio, setAnio] = useState(new Date().getFullYear())
-  const [actividades, setActividades] = useState(ACTIVIDADES_BASE.map(a => ({ ...a, alertas: 0 })))
-  const [statsGlobales, setStatsGlobales] = useState({ vencidos: 0, proximos: 0, reparar: 0 })
+  const [actividades, setActividades] = useState(ACTIVIDADES.map(a => ({ ...a, alertas: 0 })))
+  const [stats, setStats] = useState({ vencidos: 0, proximos: 0, reparar: 0, totalPlanillas: 0 })
+
+  const anios = Array.from({ length: new Date().getFullYear() - 2011 + 1 }, (_, i) => 2011 + i).reverse()
 
   useEffect(() => {
     const u = localStorage.getItem('usuario')
     if (!u) { router.push('/'); return }
     setUsuario(JSON.parse(u))
-    setActividades(ACTIVIDADES_BASE.map(a => ({ ...a, alertas: calcularAlertas(a.slug) })))
+    setActividades(ACTIVIDADES.map(a => ({ ...a, alertas: calcularAlertas(a.slug) })))
 
-    // Stats globales
     try {
       const fechasRaw = localStorage.getItem('fechas_planillas')
       const fechas: Record<string, string> = fechasRaw ? JSON.parse(fechasRaw) : {}
       const hoy = new Date()
       const en7dias = new Date(); en7dias.setDate(hoy.getDate() + 7)
       let vencidos = 0, proximos = 0
-      const mesesPorFrecuencia: Record<string, number> = {
-        diario: 0, semanal: 0, mensual: 1, trimestral: 3, semestral: 6, anual: 12
-      }
+      const meses: Record<string, number> = { diario: 0, semanal: 0, mensual: 1, trimestral: 3, semestral: 6, anual: 12 }
       for (const p of PLANILLAS_INICIALES) {
         const fechaStr = fechas[p.codigo]
         if (!fechaStr) continue
         const inicio = new Date(fechaStr)
-        const meses = mesesPorFrecuencia[p.frecuencia] ?? 1
         const vence = new Date(inicio)
-        vence.setMonth(vence.getMonth() + meses)
+        vence.setMonth(vence.getMonth() + (meses[p.frecuencia] ?? 1))
         if (vence < hoy) vencidos++
         else if (vence <= en7dias) proximos++
       }
       const equiposRaw = localStorage.getItem('inv_equipos')
       const equipos = equiposRaw ? JSON.parse(equiposRaw) : []
-      const reparar = equipos.filter((e: {ubicacion: string}) => e.ubicacion === 'para_reparar').length
-      setStatsGlobales({ vencidos, proximos, reparar })
+      const reparar = equipos.filter((e: { ubicacion: string }) => e.ubicacion === 'para_reparar').length
+      setStats({ vencidos, proximos, reparar, totalPlanillas: PLANILLAS_INICIALES.length })
     } catch { /* sin datos */ }
   }, [router])
 
@@ -83,179 +76,215 @@ export default function HomePage() {
     router.push('/')
   }
 
-  const anios = Array.from({ length: new Date().getFullYear() - ANIO_INICIO + 1 }, (_, i) => ANIO_INICIO + i).reverse()
-
   if (!usuario) return null
 
+  const totalAlertas = actividades.reduce((s, a) => s + a.alertas, 0)
+
   return (
-    <div className="min-h-screen" style={{ background: '#f0ede6' }}>
+    <div className="min-h-screen" style={{ background: 'var(--bg-page)', fontFamily: "'Inter', sans-serif" }}>
 
-      {/* HERO — imagen aérea del lago + logo */}
-      {/* Reemplazá /bg-lago.jpg con tu foto aérea del Lago San Roque */}
-      <div className="no-print" style={{ position: 'relative', width: '100%', height: 260 }}>
-        {/* Imagen de fondo — reemplazá con tu foto: copiá tu imagen a public/bg-lago.jpg */}
-        {/* Por ahora usa una foto aérea de lago de Unsplash como placeholder */}
-        <Image
-          src="/bg-lago.jpg"
-          alt="Vista aérea Lago San Roque"
-          fill
-          style={{ objectFit: 'cover', objectPosition: 'center 40%' }}
-          priority
-        />
+      {/* ── HERO ── */}
+      <div style={{ position: 'relative', width: '100%', height: 300 }}>
+        <Image src="/bg-lago.jpg" alt="Vista aérea" fill
+          style={{ objectFit: 'cover', objectPosition: 'center 40%' }} priority />
+        {/* Overlay más limpio */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(13,158,150,0.55) 0%, rgba(10,30,40,0.75) 100%)' }} />
 
-        {/* Overlay degradado: oscuro abajo para legibilidad, transparente arriba */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.55) 100%)'
-        }} />
-
-        {/* Barra superior: logo izq + usuario der */}
-        <div className="absolute top-0 left-0 right-0 flex items-start justify-between px-6 pt-5" style={{ zIndex: 10 }}>
-          <Image
-            src="/logos/aventura-en-altura.png"
-            alt="Aventura en Altura"
-            width={140}
-            height={95}
-            style={{ objectFit: 'contain', filter: 'brightness(0) invert(1) drop-shadow(0 2px 8px rgba(0,0,0,0.5))' }}
-            priority
-          />
-          <div className="flex items-center gap-4 pt-2">
-            <select
-              value={anio}
-              onChange={e => setAnio(Number(e.target.value))}
+        {/* Navbar dentro del hero */}
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-8 pt-5" style={{ zIndex: 10 }}>
+          <div className="flex items-center gap-6">
+            <Image src="/logos/aventura-en-altura.png" alt="Aventura en Altura" width={110} height={70}
+              style={{ objectFit: 'contain', filter: 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }} priority />
+            <select value={anio} onChange={e => setAnio(Number(e.target.value))}
               className="rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-              style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)' }}
-            >
+              style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(6px)' }}>
               {anios.map(a => <option key={a} value={a} style={{ color: '#111' }}>{a}</option>)}
             </select>
-            <div className="text-right" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
-              <p className="text-sm font-semibold text-white">{usuario.nombre}</p>
-              <p className="text-xs capitalize" style={{ color: 'rgba(255,255,255,0.7)' }}>{usuario.rol}</p>
+          </div>
+          <div className="flex items-center gap-5">
+            <div className="text-right">
+              <p className="text-white text-sm font-semibold" style={{ fontFamily: "'Montserrat', sans-serif" }}>{usuario.nombre}</p>
+              <p className="text-xs capitalize" style={{ color: 'rgba(255,255,255,0.65)' }}>{usuario.rol}</p>
             </div>
-            <button onClick={logout} className="text-xs underline" style={{ color: 'rgba(255,255,255,0.65)' }}>
+            <button onClick={logout}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg"
+              style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.25)' }}>
               Salir
             </button>
           </div>
         </div>
 
-        {/* Texto hero centrado abajo */}
-        <div className="absolute bottom-0 left-0 right-0 px-6 pb-5" style={{ zIndex: 10 }}>
-          <p className="text-white font-bold text-xl" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.7)', letterSpacing: 0.5 }}>
-            Sistema de Mantenimiento
+        {/* Texto hero */}
+        <div className="absolute bottom-0 left-0 right-0 px-8 pb-8" style={{ zIndex: 10 }}>
+          <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--c-yellow)', fontFamily: "'Montserrat', sans-serif" }}>
+            PTATANKA SRL · VILLA CARLOS PAZ
           </p>
-          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
-            Complejo Aerosilla · Villa Carlos Paz, Córdoba
+          <h1 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 30, fontWeight: 900, color: 'white', letterSpacing: -0.5, lineHeight: 1.1 }}>
+            Sistema de Mantenimiento
+          </h1>
+          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 6 }}>
+            Complejo Aerosilla · Aventura en Altura
           </p>
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      {/* ── STATS BAR ── */}
+      <div style={{ background: 'white', borderBottom: '1px solid var(--border)' }}>
+        <div className="max-w-5xl mx-auto grid grid-cols-4">
+          {[
+            { val: stats.totalPlanillas, label: 'Planillas de mantenimiento', color: 'var(--c-teal)' },
+            { val: totalAlertas,         label: 'Alertas pendientes',          color: totalAlertas > 0 ? '#e53e3e' : 'var(--c-teal)' },
+            { val: stats.proximos,       label: 'Próximos 7 días',             color: stats.proximos > 0 ? '#d97706' : 'var(--c-teal)' },
+            { val: stats.reparar,        label: 'Equipos para reparar',        color: stats.reparar > 0 ? '#d97706' : 'var(--c-teal)' },
+          ].map(({ val, label, color }, i) => (
+            <div key={i} className="flex flex-col items-center justify-center py-6 px-4"
+              style={{ borderRight: i < 3 ? '1px solid var(--border-light)' : 'none' }}>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 38, fontWeight: 900, color, lineHeight: 1 }}>{val}</p>
+              <span style={{ display: 'block', width: 32, height: 3, background: 'var(--c-teal)', borderRadius: 2, margin: '8px auto 6px' }} />
+              <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>{label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
 
-        {/* Alertas rápidas */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="rounded-xl p-4 flex items-center gap-3" style={{ background: '#fde8e6', border: '1px solid #f5c4be' }}>
-            <span className="text-2xl">🔴</span>
-            <div>
-              <p className="text-xl font-bold" style={{ color: '#c0392b' }}>{statsGlobales.vencidos}</p>
-              <p className="text-xs" style={{ color: '#c0392b' }}>Mantenimientos vencidos</p>
-            </div>
-          </div>
-          <div className="rounded-xl p-4 flex items-center gap-3" style={{ background: '#fff4e0', border: '1px solid #f5dca0' }}>
-            <span className="text-2xl">🟠</span>
-            <div>
-              <p className="text-xl font-bold" style={{ color: '#b7770d' }}>{statsGlobales.proximos}</p>
-              <p className="text-xs" style={{ color: '#b7770d' }}>Próximos 7 días</p>
-            </div>
-          </div>
-          <div className="rounded-xl p-4 flex items-center gap-3" style={{ background: '#e6f5f4', border: '1px solid #b2dbd8' }}>
-            <span className="text-2xl">🔧</span>
-            <div>
-              <p className="text-xl font-bold" style={{ color: '#2a807a' }}>{statsGlobales.reparar}</p>
-              <p className="text-xs" style={{ color: '#2a807a' }}>Equipos para reparar</p>
-            </div>
+      {/* ── CONTENIDO PRINCIPAL ── */}
+      <main className="max-w-5xl mx-auto px-6 py-10">
+
+        {/* Sección actividades */}
+        <div className="mb-10">
+          <p className="section-label mb-2">ACTIVIDADES</p>
+          <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 26, fontWeight: 800, color: 'var(--text-main)' }}>
+            Seleccioná una actividad
+          </h2>
+          <span className="heading-line" />
+
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            {actividades.map(act => (
+              <Link key={act.slug} href={`/${act.slug}`}>
+                <div className="relative rounded-2xl overflow-hidden cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl active:scale-95"
+                  style={{ backgroundColor: act.color, minHeight: 180, boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}>
+                  {act.alertas > 0 && (
+                    <span className="absolute top-3 right-3 z-10 bg-red-500 text-white text-xs font-bold rounded-full w-7 h-7 flex items-center justify-center shadow-lg">
+                      {act.alertas}
+                    </span>
+                  )}
+                  <div className="flex items-center justify-center w-full h-full p-4" style={{ minHeight: 180 }}>
+                    <Image src={act.logo} alt={act.nombre} width={280} height={160}
+                      style={{ objectFit: 'contain', maxHeight: 150 }} />
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
 
-        {/* Botones de actividades */}
-        <h2 className="text-lg font-semibold mb-4" style={{ color: '#2d3a2e' }}>Seleccioná una actividad</h2>
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          {actividades.map(act => (
-            <Link key={act.slug} href={`/${act.slug}`}>
-              <div
-                className="relative rounded-2xl overflow-hidden cursor-pointer hover:opacity-95 transition-all hover:shadow-xl active:scale-95"
-                style={{ backgroundColor: act.color, minHeight: 180 }}
-              >
-                {act.alertas > 0 && (
-                  <span className="absolute top-3 right-3 z-10 bg-red-500 text-white text-xs font-bold rounded-full w-7 h-7 flex items-center justify-center shadow">
-                    {act.alertas}
-                  </span>
-                )}
-                <div className="flex items-center justify-center w-full h-full p-4" style={{ minHeight: 180 }}>
-                  <Image
-                    src={act.logo}
-                    alt={act.nombre}
-                    width={280}
-                    height={160}
-                    style={{ objectFit: 'contain', maxHeight: 150 }}
-                  />
+        {/* Equipo técnico — card teal destacada */}
+        <div className="mb-10">
+          <p className="section-label mb-2">GESTIÓN</p>
+          <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 26, fontWeight: 800, color: 'var(--text-main)' }}>
+            Panel de equipos y stock
+          </h2>
+          <span className="heading-line" />
+
+          <div className="grid grid-cols-3 gap-4 mt-6">
+            {/* Equipo técnico */}
+            <Link href="/equipo-tecnico" className="col-span-2">
+              <div className="rounded-2xl p-6 h-full flex items-center gap-5 cursor-pointer transition-all hover:scale-[1.01]"
+                style={{ background: 'var(--c-teal)', boxShadow: '0 4px 18px rgba(13,158,150,0.3)' }}>
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
+                  style={{ background: 'rgba(255,255,255,0.2)' }}>🎽</div>
+                <div>
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 20, fontWeight: 800, color: 'white', lineHeight: 1.2 }}>
+                    Equipo Técnico
+                  </p>
+                  <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 4 }}>
+                    Stock consolidado de arneses, poleas y accesorios de todos los sectores
+                  </p>
+                </div>
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 22, marginLeft: 'auto' }}>→</span>
+              </div>
+            </Link>
+
+            {/* Fichas */}
+            <Link href="/fichas">
+              <div className="rounded-2xl p-6 h-full flex flex-col justify-between cursor-pointer transition-all hover:scale-[1.02]"
+                style={{ background: 'var(--c-yellow)', boxShadow: '0 4px 18px rgba(245,200,0,0.25)' }}>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+                  style={{ background: 'rgba(0,0,0,0.08)' }}>📋</div>
+                <div>
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 17, fontWeight: 800, color: '#1a1a1a' }}>
+                    Fichas de equipo
+                  </p>
+                  <p style={{ color: 'rgba(0,0,0,0.55)', fontSize: 12, marginTop: 3 }}>
+                    Historial individual por equipo
+                  </p>
                 </div>
               </div>
             </Link>
-          ))}
+          </div>
         </div>
 
-        {/* Configuración anual — destacada */}
-        {usuario.rol === 'admin' && (
-          <Link href="/config">
-            <div className="rounded-2xl p-5 flex items-center gap-4 mb-6 cursor-pointer" style={{ background: '#2d4a4a', color: 'white' }}>
-              <span className="text-3xl">⚙️</span>
-              <div>
-                <p className="font-bold text-base">Configuración anual de fechas</p>
-                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.65)' }}>Establecé cuándo empieza cada planilla para que el sistema calcule el calendario automáticamente</p>
-              </div>
-              <span className="ml-auto text-xl" style={{ color: 'rgba(255,255,255,0.4)' }}>→</span>
-            </div>
-          </Link>
-        )}
+        {/* Config + Accesos rápidos */}
+        <div className="grid grid-cols-3 gap-4">
 
-        {/* Equipo Técnico — panel visual unificado */}
-        <Link href="/equipo-tecnico">
-          <div className="rounded-2xl p-5 flex items-center gap-4 mb-6 cursor-pointer hover:opacity-95 transition-opacity"
-            style={{ background: 'linear-gradient(135deg, #1a3a5c 0%, #1d4ed8 100%)', color: 'white' }}>
-            <span className="text-3xl">🎽</span>
-            <div>
-              <p className="font-bold text-base">Equipo Técnico</p>
-              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.65)' }}>Panel con todo el stock de equipos — arneses, poleas y accesorios de todos los sectores</p>
-            </div>
-            <span className="ml-auto text-xl" style={{ color: 'rgba(255,255,255,0.4)' }}>→</span>
-          </div>
-        </Link>
-
-        {/* Accesos rápidos */}
-        <h2 className="text-lg font-semibold mb-4" style={{ color: '#2d3a2e' }}>Accesos rápidos</h2>
-        <div className="grid grid-cols-3 gap-3">
-          <Link href="/biblioteca">
-            <div className="rounded-xl p-4 flex items-center gap-3 hover:shadow-sm transition-shadow cursor-pointer" style={{ background: '#fff', border: '1px solid #ddd8cf' }}>
-              <span className="text-2xl">📚</span>
-              <span className="text-sm font-medium" style={{ color: '#2d3a2e' }}>Biblioteca Técnica</span>
-            </div>
-          </Link>
-          <Link href="/fichas">
-            <div className="rounded-xl p-4 flex items-center gap-3 hover:shadow-sm transition-shadow cursor-pointer" style={{ background: '#fff', border: '1px solid #ddd8cf' }}>
-              <span className="text-2xl">📋</span>
-              <span className="text-sm font-medium" style={{ color: '#2d3a2e' }}>Fichas de Equipo</span>
-            </div>
-          </Link>
+          {/* Config anual */}
           {usuario.rol === 'admin' && (
-            <Link href="/legales">
-              <div className="rounded-xl p-4 flex items-center gap-3 hover:shadow-sm transition-shadow cursor-pointer" style={{ background: '#fff', border: '1px solid #ddd8cf' }}>
-                <span className="text-2xl">🏛️</span>
-                <span className="text-sm font-medium" style={{ color: '#2d3a2e' }}>Documentos Legales</span>
+            <Link href="/config" className="col-span-2">
+              <div className="rounded-2xl p-5 flex items-center gap-4 cursor-pointer transition-all hover:shadow-md"
+                style={{ background: '#1a202c', color: 'white' }}>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                  style={{ background: 'rgba(255,255,255,0.1)' }}>⚙️</div>
+                <div>
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 15 }}>
+                    Configuración anual de fechas
+                  </p>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 2 }}>
+                    Calculá el calendario de mantenimientos automáticamente
+                  </p>
+                </div>
+                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 20, marginLeft: 'auto' }}>→</span>
               </div>
             </Link>
           )}
+
+          {/* Accesos rápidos */}
+          <div className={`space-y-3 ${usuario.rol !== 'admin' ? 'col-span-3' : ''}`}>
+            <Link href="/biblioteca">
+              <div className="card p-4 flex items-center gap-3 cursor-pointer no-underline"
+                style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 14 }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                  style={{ background: 'var(--c-teal-bg)' }}>📚</div>
+                <div>
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--text-main)' }}>Biblioteca Técnica</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Manuales y documentación</p>
+                </div>
+              </div>
+            </Link>
+            {usuario.rol === 'admin' && (
+              <Link href="/legales">
+                <div className="card p-4 flex items-center gap-3 cursor-pointer mt-3"
+                  style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 14 }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                    style={{ background: 'var(--c-teal-bg)' }}>🏛️</div>
+                  <div>
+                    <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--text-main)' }}>Doc. Legales</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Habilitaciones y permisos</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+          </div>
         </div>
+
       </main>
+
+      {/* ── FOOTER ── */}
+      <footer style={{ background: '#1a202c', color: 'rgba(255,255,255,0.4)', padding: '20px 32px', marginTop: 24 }}>
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <p style={{ fontSize: 12 }}>© 2026 Ptatanka SRL · Aventura en Altura · Villa Carlos Paz, Córdoba</p>
+          <p style={{ fontSize: 11 }}>Sistema de Mantenimiento v2.0</p>
+        </div>
+      </footer>
     </div>
   )
 }

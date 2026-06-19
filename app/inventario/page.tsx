@@ -882,8 +882,8 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                     onChange={e => { const f = e.target.files?.[0]; if (f) importarExcel(f); e.target.value = '' }} />
                 </label>
               )}
-              {/* Stock inicial — solo admin, solo si hay equipos cargados */}
-              {esAdmin && equipos.length > 0 && (
+              {/* Stock inicial — solo admin, siempre visible */}
+              {esAdmin && (
                 <button onClick={() => setMostrarStockInicial(true)}
                   className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl"
                   style={{ background: 'rgba(245,158,11,0.25)', border: '1px solid rgba(245,158,11,0.5)', color: '#fde68a' }}>
@@ -1396,6 +1396,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
       {mostrarStockInicial && (
         <ImportarStockInicial
           equipos={equipos.filter(e => e.tipo === 'arnes' || e.tipo === 'polea')}
+          sector={sector}
           onCerrar={() => setMostrarStockInicial(false)}
           onExito={() => { setMostrarStockInicial(false); window.location.href = '/fichas' }}
         />

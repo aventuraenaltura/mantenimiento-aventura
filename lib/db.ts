@@ -54,12 +54,15 @@ export async function actualizarEjecucion(id: string, campos: object) {
 
 // ── FICHAS DE EQUIPO ─────────────────────────────────────────────────
 
-export async function fichasExisten() {
-  const { count } = await supabase.from('fichas_equipo').select('*', { count: 'exact', head: true })
+export async function fichasExisten(sector?: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let q: any = supabase.from('fichas_equipo').select('*', { count: 'exact', head: true })
+  if (sector) q = q.eq('sector', sector)
+  const { count } = await q
   return (count ?? 0) > 0
 }
 
-export async function importarStockInicial(equipos: Record<string, unknown>[]) {
+export async function importarStockInicial(equipos: Record<string, unknown>[], sector?: string) {
   const fichas = equipos.map(e => ({
     id: e.id as string,
     numero_ficha: (e.numero_serie as string) || (e.numero_interno as string),
@@ -73,6 +76,7 @@ export async function importarStockInicial(equipos: Record<string, unknown>[]) {
     fecha_ingreso: e.fecha_ingreso || new Date().toISOString().split('T')[0],
     observaciones: e.observaciones,
     estado: 'alta',
+    sector: sector ?? 'tirolesa',
   }))
   const { error } = await supabase.from('fichas_equipo').upsert(fichas, { onConflict: 'id' })
   return !error

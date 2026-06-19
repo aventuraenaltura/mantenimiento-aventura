@@ -528,27 +528,50 @@ export default function InventarioPage() {
   const [formNuevo, setFormNuevo] = useState({ modelo: '', marca: '', color: '', tirolesa: 0, parque: 0, deposito: 0, reparar: 0, nota: '' })
 
   React.useEffect(() => {
-    const g = localStorage.getItem('inv_guantines')
-    const l = localStorage.getItem('inv_lentes')
-    const c = localStorage.getItem('inv_cascos')
-    const e = localStorage.getItem('inv_equipos')
-    const b = localStorage.getItem('inv_bolsitas')
-    const f = localStorage.getItem('inv_fundas')
-    setGuantines(g ? JSON.parse(g) : [])
-    setLentes(l ? JSON.parse(l) : [])
-    setCascos(c ? JSON.parse(c) : [])
-    setEquipos(e ? JSON.parse(e) : [])
-    setBolsitas(b ? JSON.parse(b) : [])
-    setFundas(f ? JSON.parse(f) : [])
-    setCargado(true)
+    async function cargar() {
+      // Accesorios — localStorage (no críticos para sincronización entre dispositivos)
+      const g = localStorage.getItem('inv_guantines')
+      const l = localStorage.getItem('inv_lentes')
+      const c = localStorage.getItem('inv_cascos')
+      const b = localStorage.getItem('inv_bolsitas')
+      const f = localStorage.getItem('inv_fundas')
+      setGuantines(g ? JSON.parse(g) : [])
+      setLentes(l ? JSON.parse(l) : [])
+      setCascos(c ? JSON.parse(c) : [])
+      setBolsitas(b ? JSON.parse(b) : [])
+      setFundas(f ? JSON.parse(f) : [])
+
+      // Equipos (arneses/poleas) — Supabase primero, localStorage como fallback
+      try {
+        const { cargarEquipos } = await import('@/lib/db')
+        const data = await cargarEquipos()
+        if (data && data.length > 0) {
+          setEquipos(data as Equipo[])
+          localStorage.setItem('inv_equipos', JSON.stringify(data))
+        } else {
+          const e = localStorage.getItem('inv_equipos')
+          setEquipos(e ? JSON.parse(e) : [])
+        }
+      } catch {
+        const e = localStorage.getItem('inv_equipos')
+        setEquipos(e ? JSON.parse(e) : [])
+      }
+      setCargado(true)
+    }
+    cargar()
   }, [])
 
   React.useEffect(() => { if (cargado) localStorage.setItem('inv_guantines', JSON.stringify(guantines)) }, [guantines, cargado])
   React.useEffect(() => { if (cargado) localStorage.setItem('inv_lentes',    JSON.stringify(lentes))    }, [lentes,    cargado])
   React.useEffect(() => { if (cargado) localStorage.setItem('inv_cascos',    JSON.stringify(cascos))    }, [cascos,    cargado])
-  React.useEffect(() => { if (cargado) localStorage.setItem('inv_equipos',   JSON.stringify(equipos))   }, [equipos,   cargado])
   React.useEffect(() => { if (cargado) localStorage.setItem('inv_bolsitas',  JSON.stringify(bolsitas))  }, [bolsitas,  cargado])
   React.useEffect(() => { if (cargado) localStorage.setItem('inv_fundas',    JSON.stringify(fundas))    }, [fundas,    cargado])
+  // Equipos: sync a Supabase cuando cambian
+  React.useEffect(() => {
+    if (!cargado || equipos.length === 0) return
+    localStorage.setItem('inv_equipos', JSON.stringify(equipos))
+    import('@/lib/db').then(({ guardarEquipos }) => guardarEquipos(equipos))
+  }, [equipos, cargado])
 
   const equiposFiltrados = equipos.filter(e => {
     if (filtroTipo !== 'todos' && e.tipo !== filtroTipo) return false

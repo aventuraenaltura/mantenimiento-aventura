@@ -6,10 +6,10 @@ import Image from 'next/image'
 import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
 
 const ACTIVIDADES = [
-  { slug: 'tirolesa', nombre: 'Tirolesa',          logo: '/logos/tirolesa.png',  color: '#F5C800', textColor: '#1a1a1a' },
-  { slug: 'arqueria', nombre: 'Arquería',           logo: '/logos/arqueria.png',  color: '#2d8a4e', textColor: '#ffffff' },
-  { slug: 'parque',   nombre: 'Parque Aéreo',       logo: '/logos/parque.png',    color: '#4FC3F7', textColor: '#1a1a1a' },
-  { slug: 'salon',    nombre: 'Aventura Escondida', logo: '/logos/escondida.png', color: '#e07820', textColor: '#ffffff' },
+  { slug: 'tirolesa', nombre: 'Tirolesa',          logo: '/logos/tirolesa.png',  color: '#F5C800' },
+  { slug: 'arqueria', nombre: 'Arquería',           logo: '/logos/arqueria.png',  color: '#2d8a4e' },
+  { slug: 'parque',   nombre: 'Parque Aéreo',       logo: '/logos/parque.png',    color: '#4FC3F7' },
+  { slug: 'salon',    nombre: 'Aventura Escondida', logo: '/logos/escondida.png', color: '#e07820' },
 ]
 
 function calcularAlertas(actividadSlug: string): number {
@@ -81,48 +81,52 @@ export default function HomePage() {
   const totalAlertas = actividades.reduce((s, a) => s + a.alertas, 0)
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-page)', fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen" style={{ background: 'var(--bg-page)' }}>
 
       {/* ── HERO ── */}
-      <div style={{ position: 'relative', width: '100%', height: 300 }}>
+      <div className="relative w-full" style={{ height: 'clamp(220px, 40vw, 300px)' }}>
         <Image src="/bg-lago.jpg" alt="Vista aérea" fill
           style={{ objectFit: 'cover', objectPosition: 'center 40%' }} priority />
-        {/* Overlay más limpio */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(13,158,150,0.55) 0%, rgba(10,30,40,0.75) 100%)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(13,158,150,0.55) 0%, rgba(10,30,40,0.80) 100%)' }} />
 
-        {/* Navbar dentro del hero */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-8 pt-5" style={{ zIndex: 10 }}>
-          <div className="flex items-center gap-6">
-            <Image src="/logos/aventura-en-altura.png" alt="Aventura en Altura" width={110} height={70}
+        {/* Navbar */}
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-4 sm:px-8 sm:pt-5" style={{ zIndex: 10 }}>
+          {/* Logo + año */}
+          <div className="flex items-center gap-3">
+            <Image src="/logos/aventura-en-altura.png" alt="Aventura en Altura" width={90} height={58}
               style={{ objectFit: 'contain', filter: 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }} priority />
             <select value={anio} onChange={e => setAnio(Number(e.target.value))}
-              className="rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-              style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(6px)' }}>
+              className="rounded-lg px-2 py-1 text-xs sm:text-sm focus:outline-none"
+              style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}>
               {anios.map(a => <option key={a} value={a} style={{ color: '#111' }}>{a}</option>)}
             </select>
           </div>
-          <div className="flex items-center gap-5">
-            <div className="text-right">
+
+          {/* Usuario + logout */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* En desktop mostramos el nombre, en mobile solo el botón */}
+            <div className="hidden sm:block text-right">
               <p className="text-white text-sm font-semibold" style={{ fontFamily: "'Montserrat', sans-serif" }}>{usuario.nombre}</p>
               <p className="text-xs capitalize" style={{ color: 'rgba(255,255,255,0.65)' }}>{usuario.rol}</p>
             </div>
             <button onClick={logout}
               className="text-xs font-medium px-3 py-1.5 rounded-lg"
-              style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.25)' }}>
+              style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.25)', whiteSpace: 'nowrap' }}>
               Salir
             </button>
           </div>
         </div>
 
         {/* Texto hero */}
-        <div className="absolute bottom-0 left-0 right-0 px-8 pb-8" style={{ zIndex: 10 }}>
-          <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--c-yellow)', fontFamily: "'Montserrat', sans-serif" }}>
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 sm:px-8 sm:pb-8" style={{ zIndex: 10 }}>
+          <p className="text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2"
+            style={{ color: 'var(--c-yellow)', fontFamily: "'Montserrat', sans-serif", fontSize: 10 }}>
             PTATANKA SRL · VILLA CARLOS PAZ
           </p>
-          <h1 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 30, fontWeight: 900, color: 'white', letterSpacing: -0.5, lineHeight: 1.1 }}>
+          <h1 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 'clamp(20px, 5vw, 30px)', fontWeight: 900, color: 'white', letterSpacing: -0.5, lineHeight: 1.15 }}>
             Sistema de Mantenimiento
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 6 }}>
+          <p className="hidden sm:block" style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 6 }}>
             Complejo Aerosilla · Aventura en Altura
           </p>
         </div>
@@ -130,47 +134,48 @@ export default function HomePage() {
 
       {/* ── STATS BAR ── */}
       <div style={{ background: 'white', borderBottom: '1px solid var(--border)' }}>
-        <div className="max-w-5xl mx-auto grid grid-cols-4">
+        <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-4">
           {[
-            { val: stats.totalPlanillas, label: 'Planillas de mantenimiento', color: 'var(--c-teal)' },
-            { val: totalAlertas,         label: 'Alertas pendientes',          color: totalAlertas > 0 ? '#e53e3e' : 'var(--c-teal)' },
-            { val: stats.proximos,       label: 'Próximos 7 días',             color: stats.proximos > 0 ? '#d97706' : 'var(--c-teal)' },
-            { val: stats.reparar,        label: 'Equipos para reparar',        color: stats.reparar > 0 ? '#d97706' : 'var(--c-teal)' },
+            { val: stats.totalPlanillas, label: 'Planillas',      color: 'var(--c-teal)' },
+            { val: totalAlertas,         label: 'Alertas',         color: totalAlertas > 0 ? '#e53e3e' : 'var(--c-teal)' },
+            { val: stats.proximos,       label: 'Próx. 7 días',    color: stats.proximos > 0 ? '#d97706' : 'var(--c-teal)' },
+            { val: stats.reparar,        label: 'Para reparar',    color: stats.reparar > 0 ? '#d97706' : 'var(--c-teal)' },
           ].map(({ val, label, color }, i) => (
-            <div key={i} className="flex flex-col items-center justify-center py-6 px-4"
-              style={{ borderRight: i < 3 ? '1px solid var(--border-light)' : 'none' }}>
-              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 38, fontWeight: 900, color, lineHeight: 1 }}>{val}</p>
-              <span style={{ display: 'block', width: 32, height: 3, background: 'var(--c-teal)', borderRadius: 2, margin: '8px auto 6px' }} />
-              <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>{label}</p>
+            <div key={i} className="flex flex-col items-center justify-center py-4 px-2 sm:py-6 sm:px-4"
+              style={{ borderRight: (i === 0 || i === 2) ? '1px solid var(--border-light)' : i === 1 ? '1px solid var(--border-light)' : 'none',
+                       borderBottom: i < 2 ? '1px solid var(--border-light)' : 'none' }}>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 'clamp(28px, 6vw, 38px)', fontWeight: 900, color, lineHeight: 1 }}>{val}</p>
+              <span style={{ display: 'block', width: 24, height: 3, background: 'var(--c-teal)', borderRadius: 2, margin: '6px auto 4px' }} />
+              <p className="text-xs text-center" style={{ color: 'var(--text-muted)', fontSize: 11 }}>{label}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* ── CONTENIDO PRINCIPAL ── */}
-      <main className="max-w-5xl mx-auto px-6 py-10">
+      <main className="max-w-5xl mx-auto px-4 py-6 sm:px-6 sm:py-10">
 
-        {/* Sección actividades */}
-        <div className="mb-10">
-          <p className="section-label mb-2">ACTIVIDADES</p>
-          <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 26, fontWeight: 800, color: 'var(--text-main)' }}>
+        {/* Actividades */}
+        <div className="mb-8 sm:mb-10">
+          <p className="section-label mb-1">ACTIVIDADES</p>
+          <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 'clamp(18px, 4vw, 26px)', fontWeight: 800, color: 'var(--text-main)' }}>
             Seleccioná una actividad
           </h2>
           <span className="heading-line" />
 
-          <div className="grid grid-cols-2 gap-4 mt-6">
+          <div className="grid grid-cols-2 gap-3 mt-4 sm:gap-4 sm:mt-6">
             {actividades.map(act => (
               <Link key={act.slug} href={`/${act.slug}`}>
-                <div className="relative rounded-2xl overflow-hidden cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl active:scale-95"
-                  style={{ backgroundColor: act.color, minHeight: 180, boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}>
+                <div className="relative rounded-2xl overflow-hidden cursor-pointer transition-all active:scale-95 sm:hover:scale-[1.02] sm:hover:shadow-xl"
+                  style={{ backgroundColor: act.color, boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}>
                   {act.alertas > 0 && (
-                    <span className="absolute top-3 right-3 z-10 bg-red-500 text-white text-xs font-bold rounded-full w-7 h-7 flex items-center justify-center shadow-lg">
+                    <span className="absolute top-2 right-2 z-10 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg">
                       {act.alertas}
                     </span>
                   )}
-                  <div className="flex items-center justify-center w-full h-full p-4" style={{ minHeight: 180 }}>
+                  <div className="flex items-center justify-center w-full p-3 sm:p-4" style={{ minHeight: 'clamp(120px, 25vw, 180px)' }}>
                     <Image src={act.logo} alt={act.nombre} width={280} height={160}
-                      style={{ objectFit: 'contain', maxHeight: 150 }} />
+                      style={{ objectFit: 'contain', maxHeight: 'clamp(90px, 20vw, 150px)', width: '100%' }} />
                   </div>
                 </div>
               </Link>
@@ -178,110 +183,112 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Equipo técnico — card teal destacada */}
-        <div className="mb-10">
-          <p className="section-label mb-2">GESTIÓN</p>
-          <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 26, fontWeight: 800, color: 'var(--text-main)' }}>
+        {/* Gestión */}
+        <div className="mb-8 sm:mb-10">
+          <p className="section-label mb-1">GESTIÓN</p>
+          <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 'clamp(18px, 4vw, 26px)', fontWeight: 800, color: 'var(--text-main)' }}>
             Panel de equipos y stock
           </h2>
           <span className="heading-line" />
 
-          <div className="grid grid-cols-3 gap-4 mt-6">
+          <div className="flex flex-col sm:grid sm:grid-cols-3 gap-3 mt-4 sm:gap-4 sm:mt-6">
             {/* Equipo técnico */}
-            <Link href="/equipo-tecnico" className="col-span-2">
-              <div className="rounded-2xl p-6 h-full flex items-center gap-5 cursor-pointer transition-all hover:scale-[1.01]"
+            <Link href="/equipo-tecnico" className="sm:col-span-2">
+              <div className="rounded-2xl p-5 flex items-center gap-4 cursor-pointer"
                 style={{ background: 'var(--c-teal)', boxShadow: '0 4px 18px rgba(13,158,150,0.3)' }}>
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
                   style={{ background: 'rgba(255,255,255,0.2)' }}>🎽</div>
-                <div>
-                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 20, fontWeight: 800, color: 'white', lineHeight: 1.2 }}>
+                <div className="flex-1 min-w-0">
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 17, fontWeight: 800, color: 'white', lineHeight: 1.2 }}>
                     Equipo Técnico
                   </p>
-                  <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 4 }}>
-                    Stock consolidado de arneses, poleas y accesorios de todos los sectores
+                  <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 3 }}>
+                    Stock de arneses, poleas y accesorios
                   </p>
                 </div>
-                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 22, marginLeft: 'auto' }}>→</span>
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 20, flexShrink: 0 }}>→</span>
               </div>
             </Link>
 
             {/* Fichas */}
             <Link href="/fichas">
-              <div className="rounded-2xl p-6 h-full flex flex-col justify-between cursor-pointer transition-all hover:scale-[1.02]"
-                style={{ background: 'var(--c-yellow)', boxShadow: '0 4px 18px rgba(245,200,0,0.25)' }}>
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+              <div className="rounded-2xl p-5 flex items-center gap-4 sm:flex-col sm:items-start sm:justify-between cursor-pointer"
+                style={{ background: 'var(--c-yellow)', boxShadow: '0 4px 18px rgba(245,200,0,0.25)', minHeight: 90 }}>
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
                   style={{ background: 'rgba(0,0,0,0.08)' }}>📋</div>
-                <div>
-                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 17, fontWeight: 800, color: '#1a1a1a' }}>
+                <div className="flex-1 sm:flex-none">
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 15, fontWeight: 800, color: '#1a1a1a' }}>
                     Fichas de equipo
                   </p>
-                  <p style={{ color: 'rgba(0,0,0,0.55)', fontSize: 12, marginTop: 3 }}>
-                    Historial individual por equipo
+                  <p style={{ color: 'rgba(0,0,0,0.55)', fontSize: 12, marginTop: 2 }}>
+                    Historial por equipo
                   </p>
                 </div>
+                <span className="sm:hidden" style={{ color: 'rgba(0,0,0,0.3)', fontSize: 20 }}>→</span>
               </div>
             </Link>
           </div>
         </div>
 
-        {/* Config + Accesos rápidos */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* Config + Accesos */}
+        <div className="flex flex-col sm:grid sm:grid-cols-3 gap-3 sm:gap-4">
 
-          {/* Config anual */}
           {usuario.rol === 'admin' && (
-            <Link href="/config" className="col-span-2">
-              <div className="rounded-2xl p-5 flex items-center gap-4 cursor-pointer transition-all hover:shadow-md"
+            <Link href="/config" className="sm:col-span-2">
+              <div className="rounded-2xl p-4 sm:p-5 flex items-center gap-4 cursor-pointer"
                 style={{ background: '#1a202c', color: 'white' }}>
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
                   style={{ background: 'rgba(255,255,255,0.1)' }}>⚙️</div>
-                <div>
-                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 15 }}>
+                <div className="flex-1 min-w-0">
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 14 }}>
                     Configuración anual de fechas
                   </p>
                   <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 2 }}>
-                    Calculá el calendario de mantenimientos automáticamente
+                    Calendario de mantenimientos automático
                   </p>
                 </div>
-                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 20, marginLeft: 'auto' }}>→</span>
+                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 18, flexShrink: 0 }}>→</span>
               </div>
             </Link>
           )}
 
-          {/* Accesos rápidos */}
-          <div className={`space-y-3 ${usuario.rol !== 'admin' ? 'col-span-3' : ''}`}>
+          <div className={`flex flex-col gap-3 ${usuario.rol !== 'admin' ? 'sm:col-span-3' : ''}`}>
             <Link href="/biblioteca">
-              <div className="card p-4 flex items-center gap-3 cursor-pointer no-underline"
-                style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 14 }}>
+              <div className="rounded-2xl p-4 flex items-center gap-3 cursor-pointer"
+                style={{ background: 'white', border: '1px solid var(--border)' }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
                   style={{ background: 'var(--c-teal-bg)' }}>📚</div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--text-main)' }}>Biblioteca Técnica</p>
                   <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Manuales y documentación</p>
                 </div>
+                <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
               </div>
             </Link>
             {usuario.rol === 'admin' && (
               <Link href="/legales">
-                <div className="card p-4 flex items-center gap-3 cursor-pointer mt-3"
-                  style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 14 }}>
+                <div className="rounded-2xl p-4 flex items-center gap-3 cursor-pointer"
+                  style={{ background: 'white', border: '1px solid var(--border)' }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
                     style={{ background: 'var(--c-teal-bg)' }}>🏛️</div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--text-main)' }}>Doc. Legales</p>
                     <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Habilitaciones y permisos</p>
                   </div>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
                 </div>
               </Link>
             )}
           </div>
+
         </div>
 
       </main>
 
       {/* ── FOOTER ── */}
-      <footer style={{ background: '#1a202c', color: 'rgba(255,255,255,0.4)', padding: '20px 32px', marginTop: 24 }}>
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <p style={{ fontSize: 12 }}>© 2026 Ptatanka SRL · Aventura en Altura · Villa Carlos Paz, Córdoba</p>
+      <footer className="px-4 py-5 mt-6 sm:px-8" style={{ background: '#1a202c', color: 'rgba(255,255,255,0.4)' }}>
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1">
+          <p style={{ fontSize: 11 }}>© 2026 Ptatanka SRL · Aventura en Altura · Villa Carlos Paz, Córdoba</p>
           <p style={{ fontSize: 11 }}>Sistema de Mantenimiento v2.0</p>
         </div>
       </footer>

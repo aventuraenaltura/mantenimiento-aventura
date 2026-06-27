@@ -4,6 +4,7 @@ import Link from 'next/link'
 import ControlStock from './ControlStock'
 import ImportarStockInicial from '@/components/ImportarStockInicial'
 import RegistrarReparacion from '@/components/RegistrarReparacion'
+import ReportePDF from '@/components/ReportePDF'
 
 type TipoEquipo = 'arnes' | 'polea' | 'casco' | 'mosqueton' | 'guantin'
 type Ubicacion = 'en_uso' | 'deposito' | 'para_reparar' | 'baja'
@@ -522,6 +523,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
   const [vistaControl, setVistaControl] = useState(false)
   const [mostrarStockInicial, setMostrarStockInicial] = useState(false)
   const [mostrarReparacion, setMostrarReparacion] = useState(false)
+  const [mostrarReporte, setMostrarReporte] = useState(false)
   const [esAdmin, setEsAdmin] = useState(false)
 
   React.useEffect(() => {
@@ -896,6 +898,14 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                 style={{ background: '#1d4ed8', border: 'none', color: 'white', boxShadow: '0 2px 8px rgba(29,78,216,0.4)' }}>
                 🔧 Registrar Reparaciones
               </button>
+              {/* Reporte PDF reparaciones */}
+              {equipos.filter(e => e.ubicacion === 'para_reparar').length > 0 && (
+                <button onClick={() => setMostrarReporte(true)}
+                  className="flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-xl"
+                  style={{ background: '#e07820', border: 'none', color: 'white', boxShadow: '0 2px 8px rgba(224,120,32,0.4)' }}>
+                  🖨️ Reporte reparaciones ({equipos.filter(e => e.ubicacion === 'para_reparar').length})
+                </button>
+              )}
               {/* Control de Stock */}
               <button onClick={() => setVistaControl(true)}
                 className="flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-xl"
@@ -1410,6 +1420,16 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
           onCerrar={() => setMostrarReparacion(false)}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onGuardar={(equiposAct: any[]) => setEquipos(prev => prev.map(e => equiposAct.find((a: any) => a.id === e.id) ?? e))}
+        />
+      )}
+
+      {/* Modal reporte PDF reparaciones */}
+      {mostrarReporte && (
+        <ReportePDF
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          equipos={equipos.filter(e => e.tipo === 'arnes' || e.tipo === 'polea') as any}
+          sector={sector}
+          onCerrar={() => setMostrarReporte(false)}
         />
       )}
     </div>

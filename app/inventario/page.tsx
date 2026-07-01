@@ -29,9 +29,12 @@ interface Equipo {
 interface RegistroStock {
   fecha: string
   nota: string
+  por: string
   enUso: number
   deposito: number
   reparar: number
+  repuestos: number
+  baja: number
 }
 
 interface ModeloGuantin {
@@ -41,16 +44,19 @@ interface ModeloGuantin {
   enUso: number
   deposito: number
   reparar: number
+  repuestos: number
+  baja: number
   historial: RegistroStock[]
 }
 
 interface RegistroCasco {
   fecha: string
   nota: string
-  tirolesa: number
-  parque: number
+  por: string
+  enUso: number
   deposito: number
   reparar: number
+  baja: number
 }
 
 interface ModeloCasco {
@@ -58,10 +64,11 @@ interface ModeloCasco {
   modelo: string
   marca: string
   color: string
-  tirolesa: number
-  parque: number
+  talle: string
+  enUso: number
   deposito: number
   reparar: number
+  baja: number
   historial: RegistroCasco[]
 }
 
@@ -80,17 +87,17 @@ const EQUIPOS_DEMO: Equipo[] = [
 const LENTES_DEMO: ModeloGuantin[] = [
   {
     id: '1', modelo: 'Transparente', color: 'Transparente',
-    enUso: 8, deposito: 4, reparar: 1,
+    enUso: 8, deposito: 4, reparar: 1, repuestos: 0, baja: 0,
     historial: [
-      { fecha: '2025-01-10', nota: 'Stock inicial temporada', enUso: 8, deposito: 5, reparar: 0 },
-      { fecha: '2026-02-20', nota: '1 lente rayado separado', enUso: 8, deposito: 4, reparar: 1 },
+      { fecha: '2025-01-10', nota: 'Stock inicial temporada', por: 'Admin', enUso: 8, deposito: 5, reparar: 0, repuestos: 0, baja: 0 },
+      { fecha: '2026-02-20', nota: '1 lente rayado separado', por: 'Admin', enUso: 8, deposito: 4, reparar: 1, repuestos: 0, baja: 0 },
     ],
   },
   {
     id: '2', modelo: 'Antirreflejo oscuro', color: 'Gris',
-    enUso: 4, deposito: 2, reparar: 0,
+    enUso: 4, deposito: 2, reparar: 0, repuestos: 0, baja: 0,
     historial: [
-      { fecha: '2025-06-01', nota: 'Ingreso lentes oscuros para días soleados', enUso: 4, deposito: 2, reparar: 0 },
+      { fecha: '2025-06-01', nota: 'Ingreso lentes oscuros para días soleados', por: 'Admin', enUso: 4, deposito: 2, reparar: 0, repuestos: 0, baja: 0 },
     ],
   },
 ]
@@ -98,38 +105,17 @@ const LENTES_DEMO: ModeloGuantin[] = [
 const GUANTINES_DEMO: ModeloGuantin[] = [
   {
     id: '1', modelo: 'Cuero natural', color: 'Marrón',
-    enUso: 12, deposito: 5, reparar: 3,
+    enUso: 12, deposito: 5, reparar: 3, repuestos: 2, baja: 1,
     historial: [
-      { fecha: '2025-01-10', nota: 'Stock inicial temporada', enUso: 12, deposito: 8, reparar: 0 },
-      { fecha: '2026-03-01', nota: 'Separados 3 para reparar costura', enUso: 12, deposito: 5, reparar: 3 },
+      { fecha: '2025-01-10', nota: 'Stock inicial temporada', por: 'Admin', enUso: 12, deposito: 8, reparar: 0, repuestos: 0, baja: 0 },
+      { fecha: '2026-03-01', nota: 'Separados 3 para reparar costura', por: 'Admin', enUso: 12, deposito: 5, reparar: 3, repuestos: 2, baja: 1 },
     ],
   },
 ]
 
 const CASCOS_DEMO: ModeloCasco[] = [
-  {
-    id: '1', modelo: 'Boreo', marca: 'Petzl', color: 'Rojo',
-    tirolesa: 6, parque: 0, deposito: 2, reparar: 1,
-    historial: [
-      { fecha: '2025-10-01', nota: 'Ingreso inicial', tirolesa: 6, parque: 0, deposito: 2, reparar: 0 },
-      { fecha: '2026-03-15', nota: 'Hebilla dañada separada para reparar', tirolesa: 6, parque: 0, deposito: 2, reparar: 1 },
-    ],
-  },
-  {
-    id: '2', modelo: 'Boreo', marca: 'Petzl', color: 'Azul',
-    tirolesa: 0, parque: 4, deposito: 1, reparar: 0,
-    historial: [
-      { fecha: '2025-10-01', nota: 'Ingreso inicial Parque Aéreo', tirolesa: 0, parque: 4, deposito: 1, reparar: 0 },
-    ],
-  },
-  {
-    id: '3', modelo: 'Meteor', marca: 'Petzl', color: 'Negro',
-    tirolesa: 1, parque: 1, deposito: 2, reparar: 0,
-    historial: [
-      { fecha: '2025-10-01', nota: 'Ingreso octubre 2025 — instructores', tirolesa: 0, parque: 0, deposito: 4, reparar: 0 },
-      { fecha: '2026-01-10', nota: 'Asignados 2 a actividades', tirolesa: 1, parque: 1, deposito: 2, reparar: 0 },
-    ],
-  },
+  { id: '1', modelo: 'Boreo', marca: 'Petzl', color: 'Rojo', talle: 'M', enUso: 6, deposito: 2, reparar: 1, baja: 0, historial: [{ fecha: '2025-10-01', nota: 'Ingreso inicial', por: 'Admin', enUso: 6, deposito: 2, reparar: 0, baja: 0 }] },
+  { id: '2', modelo: 'Borea', marca: 'Petzl', color: 'Azul', talle: 'S', enUso: 4, deposito: 1, reparar: 0, baja: 0, historial: [{ fecha: '2025-10-01', nota: 'Ingreso inicial', por: 'Admin', enUso: 4, deposito: 1, reparar: 0, baja: 0 }] },
 ]
 
 const ETIQUETAS_UBICACION: Record<Ubicacion, { label: string; color: string }> = {
@@ -152,23 +138,26 @@ const ETIQUETAS_TIPO: Record<TipoEquipo, string> = {
 }
 
 // ——— Módulo individual de guantín ———
-function ModuloGuantin({ guantin, onUpdate, onDelete, accentColor = '#e8b84b' }: {
+function ModuloGuantin({ guantin, onUpdate, onDelete, accentColor = '#e8b84b', puedeEditar = true }: {
   guantin: ModeloGuantin
   onUpdate: (g: ModeloGuantin) => void
   onDelete: (id: string) => void
   accentColor?: string
+  puedeEditar?: boolean
 }) {
   const [editando, setEditando] = useState(false)
   const [verHistorial, setVerHistorial] = useState(false)
-  const [form, setForm] = useState({ enUso: guantin.enUso, deposito: guantin.deposito, reparar: guantin.reparar })
+  const [form, setForm] = useState({ enUso: guantin.enUso, deposito: guantin.deposito, reparar: guantin.reparar, repuestos: guantin.repuestos ?? 0, baja: guantin.baja ?? 0 })
   const [nota, setNota] = useState('')
 
-  const total = guantin.enUso + guantin.deposito + guantin.reparar
+  const total = guantin.enUso + guantin.deposito + guantin.reparar + (guantin.repuestos ?? 0)
 
   function guardar() {
+    const por = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}').nombre || 'Usuario' } catch { return 'Usuario' } })()
     const registro: RegistroStock = {
       fecha: new Date().toISOString().split('T')[0],
       nota: nota.trim() || 'Actualización de stock',
+      por,
       ...form,
     }
     onUpdate({ ...guantin, ...form, historial: [...guantin.historial, registro] })
@@ -177,16 +166,17 @@ function ModuloGuantin({ guantin, onUpdate, onDelete, accentColor = '#e8b84b' }:
   }
 
   function cancelar() {
-    setForm({ enUso: guantin.enUso, deposito: guantin.deposito, reparar: guantin.reparar })
+    setForm({ enUso: guantin.enUso, deposito: guantin.deposito, reparar: guantin.reparar, repuestos: guantin.repuestos ?? 0, baja: guantin.baja ?? 0 })
     setNota('')
     setEditando(false)
   }
 
   const celdas = [
-    { label: 'En uso',    key: 'enUso'    as const, color: '#22c55e', bg: '#f0fdf4' },
-    { label: 'Depósito',  key: 'deposito' as const, color: '#3b82f6', bg: '#eff6ff' },
-    { label: 'Reparar',   key: 'reparar'  as const, color: '#f97316', bg: '#fff7ed' },
-    { label: 'Total',     key: null,                color: '#4a5568', bg: '#f7f4ef' },
+    { label: 'En uso',    key: 'enUso'     as const, color: '#22c55e', bg: '#f0fdf4' },
+    { label: 'Depósito',  key: 'deposito'  as const, color: '#3b82f6', bg: '#eff6ff' },
+    { label: 'Reparar',   key: 'reparar'   as const, color: '#f97316', bg: '#fff7ed' },
+    { label: 'Repuesto',  key: 'repuestos' as const, color: '#7c3aed', bg: '#f5f3ff' },
+    { label: 'Baja',      key: 'baja'      as const, color: '#dc2626', bg: '#fff5f5' },
   ]
 
   return (
@@ -203,26 +193,28 @@ function ModuloGuantin({ guantin, onUpdate, onDelete, accentColor = '#e8b84b' }:
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          {!editando && (
+          {!editando && puedeEditar && (
             <button onClick={() => setEditando(true)}
               className="text-xs px-2.5 py-1 rounded-lg font-medium"
               style={{ border: `1px solid ${accentColor}60`, color: accentColor, background: 'white' }}>
               Editar
             </button>
           )}
-          <button onClick={() => onDelete(guantin.id)}
-            className="text-xs px-2 py-1 rounded-lg"
-            style={{ color: '#cbd5e0', background: 'transparent', border: 'none' }}>
-            ✕
-          </button>
+          {puedeEditar && (
+            <button onClick={() => onDelete(guantin.id)}
+              className="text-xs px-2 py-1 rounded-lg"
+              style={{ color: '#cbd5e0', background: 'transparent', border: 'none' }}>
+              ✕
+            </button>
+          )}
         </div>
       </div>
 
       {/* Contadores */}
-      <div className="grid grid-cols-4 divide-x" style={{ background: 'white', borderBottom: '1px solid #f0ede6' }}>
+      <div className="grid grid-cols-5 divide-x" style={{ background: 'white', borderBottom: '1px solid #f0ede6' }}>
         {celdas.map(({ label, key, color, bg }) => (
           <div key={label} className="flex flex-col items-center justify-center py-3 px-1" style={{ background: bg }}>
-            {editando && key ? (
+            {editando ? (
               <input type="number" min={0}
                 value={form[key]}
                 onChange={e => setForm(f => ({ ...f, [key]: Math.max(0, Number(e.target.value)) }))}
@@ -231,7 +223,7 @@ function ModuloGuantin({ guantin, onUpdate, onDelete, accentColor = '#e8b84b' }:
               />
             ) : (
               <p className="text-2xl font-bold" style={{ color }}>
-                {key ? guantin[key] : total}
+                {guantin[key] ?? 0}
               </p>
             )}
             <p className="text-xs mt-0.5" style={{ color: '#718096' }}>{label}</p>
@@ -278,14 +270,16 @@ function ModuloGuantin({ guantin, onUpdate, onDelete, accentColor = '#e8b84b' }:
               {[...guantin.historial].reverse().map((r, i) => (
                 <div key={i} className="rounded-lg px-3 py-2 text-xs" style={{ background: '#f7f4ef', border: '1px solid #ece9e1' }}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold" style={{ color: '#1c2533' }}>{r.fecha}</span>
+                    <span className="font-semibold" style={{ color: '#1c2533' }}>{r.fecha}{r.por ? ` — ${r.por}` : ''}</span>
                     <span style={{ color: '#718096' }}>{r.nota}</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-1 mt-1">
+                  <div className="grid grid-cols-5 gap-1 mt-1">
                     {[
-                      { label: 'En uso',   val: r.enUso,    color: '#22c55e' },
-                      { label: 'Depósito', val: r.deposito, color: '#3b82f6' },
-                      { label: 'Reparar',  val: r.reparar,  color: '#f97316' },
+                      { label: 'En uso',   val: r.enUso,              color: '#22c55e' },
+                      { label: 'Depósito', val: r.deposito,            color: '#3b82f6' },
+                      { label: 'Reparar',  val: r.reparar,             color: '#f97316' },
+                      { label: 'Repuesto', val: r.repuestos ?? 0,      color: '#7c3aed' },
+                      { label: 'Baja',     val: r.baja ?? 0,           color: '#dc2626' },
                     ].map(({ label, val, color }) => (
                       <div key={label} className="text-center rounded px-1 py-1" style={{ background: 'white' }}>
                         <p className="font-bold" style={{ color }}>{val}</p>
@@ -304,23 +298,26 @@ function ModuloGuantin({ guantin, onUpdate, onDelete, accentColor = '#e8b84b' }:
 }
 
 // ——— Módulo individual de casco ———
-function ModuloCasco({ casco, onUpdate, onDelete, accentColor = '#3a9e96' }: {
+function ModuloCasco({ casco, onUpdate, onDelete, accentColor = '#3a9e96', puedeEditar = true }: {
   casco: ModeloCasco
   onUpdate: (c: ModeloCasco) => void
   onDelete: (id: string) => void
   accentColor?: string
+  puedeEditar?: boolean
 }) {
   const [editando, setEditando] = useState(false)
   const [verHistorial, setVerHistorial] = useState(false)
-  const [form, setForm] = useState({ tirolesa: casco.tirolesa, parque: casco.parque, deposito: casco.deposito, reparar: casco.reparar })
+  const [form, setForm] = useState({ enUso: casco.enUso, deposito: casco.deposito, reparar: casco.reparar, baja: casco.baja ?? 0 })
   const [nota, setNota] = useState('')
 
-  const total = casco.tirolesa + casco.parque + casco.deposito + casco.reparar
+  const total = casco.enUso + casco.deposito + casco.reparar + (casco.baja ?? 0)
 
   function guardar() {
+    const por = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}').nombre || 'Usuario' } catch { return 'Usuario' } })()
     const registro: RegistroCasco = {
       fecha: new Date().toISOString().split('T')[0],
       nota: nota.trim() || 'Actualización de stock',
+      por,
       ...form,
     }
     onUpdate({ ...casco, ...form, historial: [...casco.historial, registro] })
@@ -329,16 +326,16 @@ function ModuloCasco({ casco, onUpdate, onDelete, accentColor = '#3a9e96' }: {
   }
 
   function cancelar() {
-    setForm({ tirolesa: casco.tirolesa, parque: casco.parque, deposito: casco.deposito, reparar: casco.reparar })
+    setForm({ enUso: casco.enUso, deposito: casco.deposito, reparar: casco.reparar, baja: casco.baja ?? 0 })
     setNota('')
     setEditando(false)
   }
 
   const celdas = [
-    { label: 'Tirolesa', key: 'tirolesa' as const, color: '#e8b84b', bg: '#fffbeb' },
-    { label: 'Parque',   key: 'parque'   as const, color: '#3b82f6', bg: '#eff6ff' },
+    { label: 'En uso',   key: 'enUso'    as const, color: '#22c55e', bg: '#f0fdf4' },
     { label: 'Depósito', key: 'deposito' as const, color: '#3a9e96', bg: '#f0fdfb' },
-    { label: 'Reparar',  key: 'reparar'  as const, color: '#e07060', bg: '#fef2f2' },
+    { label: 'Reparar',  key: 'reparar'  as const, color: '#f97316', bg: '#fff7ed' },
+    { label: 'Baja',     key: 'baja'     as const, color: '#dc2626', bg: '#fff5f5' },
   ]
 
   return (
@@ -348,23 +345,25 @@ function ModuloCasco({ casco, onUpdate, onDelete, accentColor = '#3a9e96' }: {
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: `${accentColor}40`, fontSize: 13 }}>⛑️</div>
           <div>
-            <p className="font-semibold text-sm" style={{ color: '#1c2533' }}>{casco.marca} {casco.modelo}</p>
+            <p className="font-semibold text-sm" style={{ color: '#1c2533' }}>{casco.marca} {casco.modelo} {casco.talle}</p>
             <p className="text-xs" style={{ color: '#718096' }}>{casco.color} · <strong style={{ color: accentColor }}>{total}</strong> unidades</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          {!editando && (
+          {!editando && puedeEditar && (
             <button onClick={() => setEditando(true)}
               className="text-xs px-2.5 py-1 rounded-lg font-medium"
               style={{ border: `1px solid ${accentColor}60`, color: accentColor, background: 'white' }}>
               Editar
             </button>
           )}
-          <button onClick={() => onDelete(casco.id)}
-            className="text-xs px-2 py-1 rounded-lg"
-            style={{ color: '#cbd5e0', background: 'transparent', border: 'none' }}>
-            ✕
-          </button>
+          {puedeEditar && (
+            <button onClick={() => onDelete(casco.id)}
+              className="text-xs px-2 py-1 rounded-lg"
+              style={{ color: '#cbd5e0', background: 'transparent', border: 'none' }}>
+              ✕
+            </button>
+          )}
         </div>
       </div>
 
@@ -382,7 +381,7 @@ function ModuloCasco({ casco, onUpdate, onDelete, accentColor = '#3a9e96' }: {
                 style={{ color, background: 'transparent', border: 'none', maxWidth: 52 }}
               />
             ) : (
-              <p className="text-2xl font-bold" style={{ color }}>{casco[key]}</p>
+              <p className="text-2xl font-bold" style={{ color }}>{casco[key] ?? 0}</p>
             )}
             <p className="text-xs mt-0.5" style={{ color: '#718096' }}>{label}</p>
           </div>
@@ -431,15 +430,15 @@ function ModuloCasco({ casco, onUpdate, onDelete, accentColor = '#3a9e96' }: {
               {[...casco.historial].reverse().map((r, i) => (
                 <div key={i} className="rounded-lg px-3 py-2 text-xs" style={{ background: '#f7f4ef', border: '1px solid #ece9e1' }}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold" style={{ color: '#1c2533' }}>{r.fecha}</span>
+                    <span className="font-semibold" style={{ color: '#1c2533' }}>{r.fecha}{r.por ? ` — ${r.por}` : ''}</span>
                     <span style={{ color: '#718096' }}>{r.nota}</span>
                   </div>
                   <div className="grid grid-cols-4 gap-1 mt-1">
                     {[
-                      { label: 'Tirolesa', val: r.tirolesa, color: '#e8b84b' },
-                      { label: 'Parque',   val: r.parque,   color: '#3b82f6' },
+                      { label: 'En uso',   val: r.enUso,    color: '#22c55e' },
                       { label: 'Depósito', val: r.deposito, color: '#3a9e96' },
-                      { label: 'Reparar',  val: r.reparar,  color: '#e07060' },
+                      { label: 'Reparar',  val: r.reparar,  color: '#f97316' },
+                      { label: 'Baja',     val: r.baja ?? 0, color: '#dc2626' },
                     ].map(({ label, val, color }) => (
                       <div key={label} className="text-center rounded px-1 py-1" style={{ background: 'white' }}>
                         <p className="font-bold" style={{ color }}>{val}</p>
@@ -458,10 +457,10 @@ function ModuloCasco({ casco, onUpdate, onDelete, accentColor = '#3a9e96' }: {
 }
 
 // ——— Página principal ———
-function SeccionStock({ icono, titulo, total, modelos, accentColor, mostrarForm, setMostrarForm, formContent, children }: {
+function SeccionStock({ icono, titulo, total, modelos, accentColor, mostrarForm, setMostrarForm, formContent, children, puedeEditar = true }: {
   icono: string; titulo: string; total: number; modelos: number
   accentColor: string; mostrarForm: boolean; setMostrarForm: (v: boolean) => void
-  formContent: React.ReactNode; children: React.ReactNode
+  formContent: React.ReactNode; children: React.ReactNode; puedeEditar?: boolean
 }) {
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${accentColor}25`, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
@@ -475,13 +474,15 @@ function SeccionStock({ icono, titulo, total, modelos, accentColor, mostrarForm,
             <p className="text-xs" style={{ color: accentColor }}>{total} uds · {modelos} modelo{modelos !== 1 ? 's' : ''}</p>
           </div>
         </div>
-        <button onClick={() => setMostrarForm(!mostrarForm)}
-          className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors"
-          style={mostrarForm
-            ? { background: accentColor, color: 'white', border: 'none' }
-            : { border: `1px solid ${accentColor}50`, color: accentColor, background: 'white' }}>
-          {mostrarForm ? '✕' : '+ Nuevo'}
-        </button>
+        {puedeEditar && (
+          <button onClick={() => setMostrarForm(!mostrarForm)}
+            className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors"
+            style={mostrarForm
+              ? { background: accentColor, color: 'white', border: 'none' }
+              : { border: `1px solid ${accentColor}50`, color: accentColor, background: 'white' }}>
+            {mostrarForm ? '✕' : '+ Nuevo'}
+          </button>
+        )}
       </div>
       {mostrarForm && (
         <div className="px-4 py-4" style={{ background: 'white', borderBottom: `1px solid ${accentColor}20` }}>
@@ -525,9 +526,17 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
   const [mostrarReparacion, setMostrarReparacion] = useState(false)
   const [mostrarReporte, setMostrarReporte] = useState(false)
   const [esAdmin, setEsAdmin] = useState(false)
+  const [puedeEditar, setPuedeEditar] = useState(false)
+  const [usuarioNombre, setUsuarioNombre] = useState('')
 
   React.useEffect(() => {
-    try { const u = JSON.parse(localStorage.getItem('usuario') || '{}'); setEsAdmin(u.rol === 'admin') } catch {}
+    try {
+      const u = JSON.parse(localStorage.getItem('usuario') || '{}')
+      setEsAdmin(u.rol === 'admin')
+      setPuedeEditar(u.rol === 'admin' || u.rol === 'ingeniero')
+      setUsuarioNombre(u.nombre || '')
+      setFormEvento(prev => ({ ...prev, por: u.nombre || '' }))
+    } catch {}
   }, [])
 
   const [filtroTipo, setFiltroTipo] = useState<string>('todos')
@@ -553,7 +562,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
   const [mostrarFormNuevaFunda, setMostrarFormNuevaFunda] = useState(false)
   const [formNuevaFunda, setFormNuevaFunda] = useState({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
   const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false)
-  const [formNuevo, setFormNuevo] = useState({ modelo: '', marca: '', color: '', tirolesa: 0, parque: 0, deposito: 0, reparar: 0, nota: '' })
+  const [formNuevo, setFormNuevo] = useState({ modelo: '', marca: '', color: '', talle: '', enUso: 0, deposito: 0, reparar: 0, baja: 0, nota: '' })
 
   React.useEffect(() => {
     async function cargar() {
@@ -632,12 +641,13 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
         ? { ...e, historial: [...e.historial, { ...formEvento }] } : e
     ))
     setEquipoSeleccionado(prev => prev ? { ...prev, historial: [...prev.historial, { ...formEvento }] } : null)
-    setFormEvento({ fecha: new Date().toISOString().split('T')[0], accion: '', por: '' })
+    setFormEvento({ fecha: new Date().toISOString().split('T')[0], accion: '', por: usuarioNombre })
     setMostrarFormEvento(false)
   }
 
   function agregarModeloLente() {
     if (!formNuevoLente.modelo) return
+    const por = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}').nombre || 'Usuario' } catch { return 'Usuario' } })()
     const nuevo: ModeloGuantin = {
       id: Date.now().toString(),
       modelo: formNuevoLente.modelo,
@@ -645,12 +655,17 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
       enUso: formNuevoLente.enUso,
       deposito: formNuevoLente.deposito,
       reparar: formNuevoLente.reparar,
+      repuestos: 0,
+      baja: 0,
       historial: [{
         fecha: new Date().toISOString().split('T')[0],
         nota: formNuevoLente.nota || 'Stock inicial',
+        por,
         enUso: formNuevoLente.enUso,
         deposito: formNuevoLente.deposito,
         reparar: formNuevoLente.reparar,
+        repuestos: 0,
+        baja: 0,
       }],
     }
     setLentes(prev => [...prev, nuevo])
@@ -660,6 +675,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
 
   function agregarModeloGuantin() {
     if (!formNuevoGuantin.modelo) return
+    const por = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}').nombre || 'Usuario' } catch { return 'Usuario' } })()
     const nuevo: ModeloGuantin = {
       id: Date.now().toString(),
       modelo: formNuevoGuantin.modelo,
@@ -667,12 +683,17 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
       enUso: formNuevoGuantin.enUso,
       deposito: formNuevoGuantin.deposito,
       reparar: formNuevoGuantin.reparar,
+      repuestos: 0,
+      baja: 0,
       historial: [{
         fecha: new Date().toISOString().split('T')[0],
         nota: formNuevoGuantin.nota || 'Stock inicial',
+        por,
         enUso: formNuevoGuantin.enUso,
         deposito: formNuevoGuantin.deposito,
         reparar: formNuevoGuantin.reparar,
+        repuestos: 0,
+        baja: 0,
       }],
     }
     setGuantines(prev => [...prev, nuevo])
@@ -682,30 +703,33 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
 
   function agregarModeloCasco() {
     if (!formNuevo.modelo) return
+    const por = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}').nombre || 'Usuario' } catch { return 'Usuario' } })()
     const nuevo: ModeloCasco = {
       id: Date.now().toString(),
       modelo: formNuevo.modelo,
       marca: formNuevo.marca,
       color: formNuevo.color,
-      tirolesa: formNuevo.tirolesa,
-      parque: formNuevo.parque,
+      talle: formNuevo.talle,
+      enUso: formNuevo.enUso,
       deposito: formNuevo.deposito,
       reparar: formNuevo.reparar,
+      baja: formNuevo.baja,
       historial: [{
         fecha: new Date().toISOString().split('T')[0],
         nota: formNuevo.nota || 'Stock inicial',
-        tirolesa: formNuevo.tirolesa,
-        parque: formNuevo.parque,
+        por,
+        enUso: formNuevo.enUso,
         deposito: formNuevo.deposito,
         reparar: formNuevo.reparar,
+        baja: formNuevo.baja,
       }],
     }
     setCascos(prev => [...prev, nuevo])
-    setFormNuevo({ modelo: '', marca: '', color: '', tirolesa: 0, parque: 0, deposito: 0, reparar: 0, nota: '' })
+    setFormNuevo({ modelo: '', marca: '', color: '', talle: '', enUso: 0, deposito: 0, reparar: 0, baja: 0, nota: '' })
     setMostrarFormNuevo(false)
   }
 
-  const totalCascosTodos = cascos.reduce((s, c) => s + c.tirolesa + c.parque + c.deposito + c.reparar, 0)
+  const totalCascosTodos = cascos.reduce((s, c) => s + c.enUso + c.deposito + c.reparar + (c.baja ?? 0), 0)
 
   // Stats rápidas
   const totalEnUso = equipos.filter(e => e.ubicacion === 'en_uso').length
@@ -893,11 +917,13 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                 </button>
               )}
               {/* Registrar Reparaciones */}
-              <button onClick={() => setMostrarReparacion(true)}
-                className="flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-xl"
-                style={{ background: '#1d4ed8', border: 'none', color: 'white', boxShadow: '0 2px 8px rgba(29,78,216,0.4)' }}>
-                🔧 Registrar Reparaciones
-              </button>
+              {puedeEditar && (
+                <button onClick={() => setMostrarReparacion(true)}
+                  className="flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-xl"
+                  style={{ background: '#1d4ed8', border: 'none', color: 'white', boxShadow: '0 2px 8px rgba(29,78,216,0.4)' }}>
+                  🔧 Registrar Reparaciones
+                </button>
+              )}
               {/* Reporte PDF reparaciones */}
               {equipos.filter(e => e.ubicacion === 'para_reparar').length > 0 && (
                 <button onClick={() => setMostrarReporte(true)}
@@ -1059,6 +1085,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                       total={items.reduce((s, g) => s + g.enUso + g.deposito + g.reparar, 0)}
                       modelos={items.length}
                       accentColor={a.color}
+                      puedeEditar={puedeEditar}
                       mostrarForm={mostrarFormArq === a.slug}
                       setMostrarForm={(v) => { setMostrarFormArq(v ? a.slug : null); setFormArq({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' }) }}
                       formContent={
@@ -1086,11 +1113,12 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                             className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none" style={{ border: '1px solid #ddd8cf', background: '#faf8f4' }} />
                           <button onClick={() => {
                             if (!formArq.modelo) return
+                            const porArq = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}').nombre || 'Usuario' } catch { return 'Usuario' } })()
                             const nuevo: ModeloGuantin = {
                               id: Date.now().toString(),
                               modelo: formArq.modelo, color: formArq.color,
-                              enUso: formArq.enUso, deposito: formArq.deposito, reparar: formArq.reparar,
-                              historial: formArq.nota ? [{ fecha: new Date().toISOString().split('T')[0], nota: formArq.nota, enUso: formArq.enUso, deposito: formArq.deposito, reparar: formArq.reparar }] : [],
+                              enUso: formArq.enUso, deposito: formArq.deposito, reparar: formArq.reparar, repuestos: 0, baja: 0,
+                              historial: formArq.nota ? [{ fecha: new Date().toISOString().split('T')[0], nota: formArq.nota, por: porArq, enUso: formArq.enUso, deposito: formArq.deposito, reparar: formArq.reparar, repuestos: 0, baja: 0 }] : [],
                             }
                             setAccArq(prev => ({ ...prev, [a.slug]: [...(prev[a.slug] ?? []), nuevo] }))
                             setFormArq({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
@@ -1101,7 +1129,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                         </div>
                       }>
                       {items.map(g => (
-                        <ModuloGuantin key={g.id} guantin={g} accentColor={a.color}
+                        <ModuloGuantin key={g.id} guantin={g} accentColor={a.color} puedeEditar={puedeEditar}
                           onUpdate={u => setAccArq(prev => ({ ...prev, [a.slug]: (prev[a.slug] ?? []).map(x => x.id === u.id ? u : x) }))}
                           onDelete={id => setAccArq(prev => ({ ...prev, [a.slug]: (prev[a.slug] ?? []).filter(x => x.id !== id) }))} />
                       ))}
@@ -1117,6 +1145,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
               total={guantines.reduce((s, g) => s + g.enUso + g.deposito + g.reparar, 0)}
               modelos={guantines.length}
               accentColor="#c8780a"
+              puedeEditar={puedeEditar}
               mostrarForm={mostrarFormNuevoGuantin}
               setMostrarForm={setMostrarFormNuevoGuantin}
               formContent={
@@ -1146,7 +1175,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                 </div>
               }>
               {guantines.map(g => (
-                <ModuloGuantin key={g.id} guantin={g} accentColor="#c8780a"
+                <ModuloGuantin key={g.id} guantin={g} accentColor="#c8780a" puedeEditar={puedeEditar}
                   onUpdate={u => setGuantines(prev => prev.map(x => x.id === u.id ? u : x))}
                   onDelete={id => setGuantines(prev => prev.filter(x => x.id !== id))} />
               ))}
@@ -1158,6 +1187,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
               total={lentes.reduce((s, l) => s + l.enUso + l.deposito + l.reparar, 0)}
               modelos={lentes.length}
               accentColor="#5a7080"
+              puedeEditar={puedeEditar}
               mostrarForm={mostrarFormNuevoLente}
               setMostrarForm={setMostrarFormNuevoLente}
               formContent={
@@ -1187,7 +1217,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                 </div>
               }>
               {lentes.map(l => (
-                <ModuloGuantin key={l.id} guantin={l} accentColor="#5a7080"
+                <ModuloGuantin key={l.id} guantin={l} accentColor="#5a7080" puedeEditar={puedeEditar}
                   onUpdate={u => setLentes(prev => prev.map(x => x.id === u.id ? u : x))}
                   onDelete={id => setLentes(prev => prev.filter(x => x.id !== id))} />
               ))}
@@ -1199,19 +1229,20 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
               total={totalCascosTodos}
               modelos={cascos.length}
               accentColor="#3a9e96"
+              puedeEditar={puedeEditar}
               mostrarForm={mostrarFormNuevo}
               setMostrarForm={setMostrarFormNuevo}
               formContent={
                 <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-2">
-                    {[{ key: 'modelo', ph: 'Modelo *' }, { key: 'marca', ph: 'Marca' }, { key: 'color', ph: 'Color' }].map(({ key, ph }) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {[{ key: 'modelo', ph: 'Modelo *' }, { key: 'marca', ph: 'Marca' }, { key: 'color', ph: 'Color' }, { key: 'talle', ph: 'Talle (S/M/L/XL/Niño/Único)' }].map(({ key, ph }) => (
                       <input key={key} type="text" placeholder={ph} value={(formNuevo as Record<string, string | number>)[key] as string}
                         onChange={e => setFormNuevo(f => ({ ...f, [key]: e.target.value }))}
                         className="rounded-lg px-3 py-2 text-sm focus:outline-none" style={{ border: '1px solid #ddd8cf', background: '#faf8f4' }} />
                     ))}
                   </div>
                   <div className="grid grid-cols-4 gap-2">
-                    {[{ key: 'tirolesa', label: 'Tirolesa', color: '#e8b84b' }, { key: 'parque', label: 'Parque', color: '#3b82f6' }, { key: 'deposito', label: 'Depósito', color: '#3a9e96' }, { key: 'reparar', label: 'Reparar', color: '#e07060' }].map(({ key, label, color }) => (
+                    {[{ key: 'enUso', label: 'En uso', color: '#22c55e' }, { key: 'deposito', label: 'Depósito', color: '#3a9e96' }, { key: 'reparar', label: 'Reparar', color: '#f97316' }, { key: 'baja', label: 'Baja', color: '#dc2626' }].map(({ key, label, color }) => (
                       <div key={key} className="text-center">
                         <p className="text-xs mb-1 font-medium" style={{ color }}>{label}</p>
                         <input type="number" min={0} value={(formNuevo as Record<string, string | number>)[key] as number}
@@ -1227,7 +1258,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                 </div>
               }>
               {cascos.map(c => (
-                <ModuloCasco key={c.id} casco={c} accentColor="#3a9e96"
+                <ModuloCasco key={c.id} casco={c} accentColor="#3a9e96" puedeEditar={puedeEditar}
                   onUpdate={u => setCascos(prev => prev.map(x => x.id === u.id ? u : x))}
                   onDelete={id => setCascos(prev => prev.filter(x => x.id !== id))} />
               ))}
@@ -1239,6 +1270,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
               total={bolsitas.reduce((s, b) => s + b.enUso + b.deposito + b.reparar, 0)}
               modelos={bolsitas.length}
               accentColor="#7c3aed"
+              puedeEditar={puedeEditar}
               mostrarForm={mostrarFormNuevoBolsita}
               setMostrarForm={setMostrarFormNuevoBolsita}
               formContent={
@@ -1262,14 +1294,15 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                   </div>
                   <button onClick={() => {
                     if (!formNuevoBolsita.modelo) return
-                    setBolsitas(prev => [...prev, { id: Date.now().toString(), modelo: formNuevoBolsita.modelo, color: formNuevoBolsita.color, enUso: formNuevoBolsita.enUso, deposito: formNuevoBolsita.deposito, reparar: formNuevoBolsita.reparar, historial: formNuevoBolsita.nota ? [{ fecha: new Date().toISOString().split('T')[0], nota: formNuevoBolsita.nota, enUso: formNuevoBolsita.enUso, deposito: formNuevoBolsita.deposito, reparar: formNuevoBolsita.reparar }] : [] }])
+                    const porB = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}').nombre || 'Usuario' } catch { return 'Usuario' } })()
+                    setBolsitas(prev => [...prev, { id: Date.now().toString(), modelo: formNuevoBolsita.modelo, color: formNuevoBolsita.color, enUso: formNuevoBolsita.enUso, deposito: formNuevoBolsita.deposito, reparar: formNuevoBolsita.reparar, repuestos: 0, baja: 0, historial: formNuevoBolsita.nota ? [{ fecha: new Date().toISOString().split('T')[0], nota: formNuevoBolsita.nota, por: porB, enUso: formNuevoBolsita.enUso, deposito: formNuevoBolsita.deposito, reparar: formNuevoBolsita.reparar, repuestos: 0, baja: 0 }] : [] }])
                     setFormNuevoBolsita({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
                     setMostrarFormNuevoBolsita(false)
                   }} className="w-full text-white text-sm font-bold py-2.5 rounded-xl" style={{ background: '#7c3aed' }}>Agregar modelo</button>
                 </div>
               }>
               {bolsitas.map(b => (
-                <ModuloGuantin key={b.id} guantin={b} accentColor="#7c3aed"
+                <ModuloGuantin key={b.id} guantin={b} accentColor="#7c3aed" puedeEditar={puedeEditar}
                   onUpdate={u => setBolsitas(prev => prev.map(x => x.id === u.id ? u : x))}
                   onDelete={id => setBolsitas(prev => prev.filter(x => x.id !== id))} />
               ))}
@@ -1281,6 +1314,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
               total={fundas.reduce((s, f) => s + f.enUso + f.deposito + f.reparar, 0)}
               modelos={fundas.length}
               accentColor="#0369a1"
+              puedeEditar={puedeEditar}
               mostrarForm={mostrarFormNuevaFunda}
               setMostrarForm={setMostrarFormNuevaFunda}
               formContent={
@@ -1304,14 +1338,15 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                   </div>
                   <button onClick={() => {
                     if (!formNuevaFunda.modelo) return
-                    setFundas(prev => [...prev, { id: Date.now().toString(), modelo: formNuevaFunda.modelo, color: formNuevaFunda.color, enUso: formNuevaFunda.enUso, deposito: formNuevaFunda.deposito, reparar: formNuevaFunda.reparar, historial: formNuevaFunda.nota ? [{ fecha: new Date().toISOString().split('T')[0], nota: formNuevaFunda.nota, enUso: formNuevaFunda.enUso, deposito: formNuevaFunda.deposito, reparar: formNuevaFunda.reparar }] : [] }])
+                    const porF = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}').nombre || 'Usuario' } catch { return 'Usuario' } })()
+                    setFundas(prev => [...prev, { id: Date.now().toString(), modelo: formNuevaFunda.modelo, color: formNuevaFunda.color, enUso: formNuevaFunda.enUso, deposito: formNuevaFunda.deposito, reparar: formNuevaFunda.reparar, repuestos: 0, baja: 0, historial: formNuevaFunda.nota ? [{ fecha: new Date().toISOString().split('T')[0], nota: formNuevaFunda.nota, por: porF, enUso: formNuevaFunda.enUso, deposito: formNuevaFunda.deposito, reparar: formNuevaFunda.reparar, repuestos: 0, baja: 0 }] : [] }])
                     setFormNuevaFunda({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
                     setMostrarFormNuevaFunda(false)
                   }} className="w-full text-white text-sm font-bold py-2.5 rounded-xl" style={{ background: '#0369a1' }}>Agregar modelo</button>
                 </div>
               }>
               {fundas.map(f => (
-                <ModuloGuantin key={f.id} guantin={f} accentColor="#0369a1"
+                <ModuloGuantin key={f.id} guantin={f} accentColor="#0369a1" puedeEditar={puedeEditar}
                   onUpdate={u => setFundas(prev => prev.map(x => x.id === u.id ? u : x))}
                   onDelete={id => setFundas(prev => prev.filter(x => x.id !== id))} />
               ))}

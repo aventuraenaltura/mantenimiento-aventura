@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { loginUsuario } from '@/lib/usuarios'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -15,14 +16,12 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    if (email === 'aventuraenaltura@gmail.com' && password === 'admin123') {
-      localStorage.setItem('usuario', JSON.stringify({ nombre: 'Administrador', rol: 'admin', email }))
-      router.push('/home')
-    } else if (email === 'mantenimientogral@gmail.com' && password === 'mant123') {
-      localStorage.setItem('usuario', JSON.stringify({ nombre: 'Empleado', rol: 'empleado', email }))
+    const sesion = loginUsuario(email, password)
+    if (sesion) {
+      localStorage.setItem('usuario', JSON.stringify(sesion))
       router.push('/home')
     } else {
-      setError('Email o contraseña incorrectos')
+      setError('Email o contraseña incorrectos, o usuario inactivo')
     }
     setLoading(false)
   }

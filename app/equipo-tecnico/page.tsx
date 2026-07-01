@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getSesion } from '@/lib/usuarios'
-import ImportarExcelStock, { type EquipoImportado } from '@/components/ImportarExcelStock'
+import ImportarExcelStock, { type EquipoImportado, type ItemVarios } from '@/components/ImportarExcelStock'
 
 interface Equipo {
   id: string
@@ -40,6 +40,8 @@ interface CargaHistorial {
   arneses: number
   poleas: number
   cascos: number
+  arcos?: number
+  varios?: number
   total: number
 }
 
@@ -169,7 +171,7 @@ export default function EquipoTecnicoPage() {
     }
   }
 
-  function handleImportar(equipos: EquipoImportado[], resumen: { arneses: number; poleas: number; cascos: number; total: number; fecha: string }) {
+  function handleImportar(equipos: EquipoImportado[], varios: ItemVarios[], resumen: { arneses: number; poleas: number; cascos: number; arcos?: number; varios?: number; total: number; fecha: string }) {
     // Guardar equipos separados por sector
     const porSector: Record<string, EquipoImportado[]> = {}
     for (const e of equipos) {
@@ -179,7 +181,7 @@ export default function EquipoTecnicoPage() {
 
     // Guardar en localStorage por sector
     for (const [sector, items] of Object.entries(porSector)) {
-      const arnesesPol = items.filter(e => e.tipo === 'arnes' || e.tipo === 'polea').map((e, i) => ({
+      const equiposSector = items.filter(e => e.tipo === 'arnes' || e.tipo === 'polea' || e.tipo === 'arco' || e.tipo === 'casco').map((e, i) => ({
         id: `${e.tipo}-${e.numero_serie || i}-${sector}`,
         tipo: e.tipo,
         numero_interno: String(i + 1),
@@ -192,14 +194,23 @@ export default function EquipoTecnicoPage() {
         estado: 'bueno',
         fecha_ingreso: e.primer_uso || '',
         observaciones: e.observaciones,
+        caracteristicas: e.caracteristicas || '',
         historial: e.instructor ? [{ fecha: resumen.fecha, accion: `Asignado a instructor: ${e.instructor}`, por: 'Sistema' }] : [],
       }))
       const existing = JSON.parse(localStorage.getItem(`inv_${sector}_equipos`) || '[]')
       const merged = [...existing]
-      for (const eq of arnesesPol) {
+      for (const eq of equiposSector) {
         if (!merged.find((x: Equipo) => x.numero_serie === eq.numero_serie)) merged.push(eq)
       }
       localStorage.setItem(`inv_${sector}_equipos`, JSON.stringify(merged))
+    }
+
+    // Guardar varios por sector
+    const sectoresVarios = [...new Set(varios.map(v => v.sector))]
+    for (const sector of sectoresVarios) {
+      const clave = `inv_${sector}_varios`
+      const itemsSector = varios.filter(v => v.sector === sector)
+      localStorage.setItem(clave, JSON.stringify(itemsSector))
     }
 
     // Registrar en historial
@@ -211,6 +222,8 @@ export default function EquipoTecnicoPage() {
       arneses: resumen.arneses,
       poleas: resumen.poleas,
       cascos: resumen.cascos,
+      arcos: resumen.arcos,
+      varios: resumen.varios,
       total: resumen.total,
     }
     const nuevoHistorial = [...historialCargas, nueva]
@@ -226,6 +239,17 @@ export default function EquipoTecnicoPage() {
   }
 
   const esAdmin = sesion?.rol === 'admin'
+
+  function borrarTodo() {
+    if (!confirm('¿Borrar todo el stock importado? Esta acción no se puede deshacer.')) return
+    const sectores = ['tirolesa', 'parque', 'arqueria', 'salon']
+    for (const s of sectores) {
+      localStorage.removeItem(`inv_${s}_equipos`)
+      localStorage.removeItem(`inv_${s}_varios`)
+    }
+    localStorage.removeItem('historial_cargas_stock')
+    window.location.reload()
+  }
 
   if (!cargado) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-page)' }}>
@@ -249,6 +273,10 @@ export default function EquipoTecnicoPage() {
           </div>
           {esAdmin && (
             <div className="flex gap-2 flex-shrink-0">
+              <button onClick={borrarTodo} className="text-xs font-bold px-3 py-2 rounded-xl"
+                style={{ background: '#fff5f5', color: '#dc2626', border: '1px solid #fecaca' }}>
+                🗑️ Borrar stock
+              </button>
               <button onClick={() => imprimirStockActual(stocks, historialCargas)}
                 className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl"
                 style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}>
@@ -456,10 +484,12 @@ export default function EquipoTecnicoPage() {
                           Importado por <strong>{c.cargadoPor}</strong>
                           {c.fechaDoc && <> · Fecha doc: {c.fechaDoc}</>}
                         </p>
-                        <div className="flex gap-4 mt-2">
+                        <div className="flex gap-4 mt-2 flex-wrap">
                           <span className="text-xs font-semibold" style={{ color: '#16a34a' }}>🦺 {c.arneses} arneses</span>
                           <span className="text-xs font-semibold" style={{ color: '#2563eb' }}>⚙️ {c.poleas} poleas</span>
                           <span className="text-xs font-semibold" style={{ color: '#7c3aed' }}>⛑️ {c.cascos} cascos</span>
+                          {(c.arcos ?? 0) > 0 && <span className="text-xs font-semibold" style={{ color: '#92400e' }}>🏹 {c.arcos} arcos</span>}
+                          {(c.varios ?? 0) > 0 && <span className="text-xs font-semibold" style={{ color: '#64748b' }}>📦 {c.varios} varios</span>}
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">

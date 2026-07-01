@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react'
 
 export interface EquipoImportado {
-  tipo: 'arnes' | 'polea' | 'casco'
+  tipo: 'arnes' | 'polea' | 'casco' | 'arco'
   sector: string
   marca: string
   modelo: string
@@ -13,31 +13,44 @@ export interface EquipoImportado {
   comprado: string
   primer_uso: string
   observaciones: string
+  caracteristicas?: string
+}
+
+export interface ItemVarios {
+  sector: string
+  nombre: string
+  caracteristicas: string
+  enUso: number
+  deposito: number
+  reparar: number
+  repuestos: number
 }
 
 interface ResumenImport {
   arneses: number
   poleas: number
   cascos: number
+  arcos: number
+  varios: number
   total: number
   fecha: string
 }
 
 interface Props {
-  onImportar: (equipos: EquipoImportado[], resumen: ResumenImport) => void
+  onImportar: (equipos: EquipoImportado[], varios: ItemVarios[], resumen: ResumenImport) => void
   onCerrar: () => void
 }
 
-function mapUbicacion(raw: string): EquipoImportado['ubicacion'] {
+function mapUbicacionStatus(raw: string): EquipoImportado['ubicacion'] {
   const v = String(raw || '').trim().toUpperCase()
-  if (v.startsWith('REP') || v === 'R') return 'para_reparar'
-  if (v.startsWith('BAJA') || v === 'B') return 'baja'
-  if (v === 'DEP' || v === 'D' || v.startsWith('DEP')) return 'deposito'
-  if (v === 'EU' || v === 'TUR' || v === 'INSTR' || v === 'T' || v === 'I') return 'en_uso'
-  return 'en_uso'
+  if (v.includes('BAJA')) return 'baja'
+  if (v === 'REP' || v.startsWith('REP')) return 'para_reparar'
+  if (v === 'DEP') return 'deposito'
+  if (v === 'EU' || v === 'INSTR' || v === 'T' || v === 'I') return 'en_uso'
+  return 'deposito'
 }
 
-function mapUsoActual(raw: string, ubicacion: string): EquipoImportado['uso_actual'] {
+function mapUsoActual(raw: string, ubicacion: EquipoImportado['ubicacion']): EquipoImportado['uso_actual'] {
   const v = String(raw || '').trim().toUpperCase()
   if (v === 'INSTR') return 'instructor'
   if (ubicacion === 'baja') return 'baja'
@@ -47,16 +60,18 @@ function mapUsoActual(raw: string, ubicacion: string): EquipoImportado['uso_actu
 
 function normalizarSector(raw: string): string {
   const v = String(raw || '').trim().toLowerCase()
-  if (v.includes('tiro') || v.includes('tirolesa')) return 'tirolesa'
+  if (v.includes('tiro')) return 'tirolesa'
   if (v.includes('parque') || v.includes('aereo') || v.includes('aéreo')) return 'parque'
-  if (v.includes('arque') || v.includes('arquería')) return 'arqueria'
-  if (v.includes('instr')) return 'tirolesa' // instructores → tirolesa por defecto
-  return v || 'tirolesa'
+  if (v.includes('arque') || v.includes('arquer')) return 'arqueria'
+  if (v.includes('instr')) return 'tirolesa'
+  if (v.includes('salon') || v.includes('salón')) return 'salon'
+  return 'tirolesa'
 }
 
 export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
   const [paso, setPaso] = useState<'subir' | 'preview' | 'procesando' | 'ok' | 'error'>('subir')
   const [equipos, setEquipos] = useState<EquipoImportado[]>([])
+  const [varios, setVarios] = useState<ItemVarios[]>([])
   const [error, setError] = useState('')
   const [fechaDoc, setFechaDoc] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -64,13 +79,9 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
   async function procesarArchivo(file: File) {
     setPaso('procesando')
     try {
-      // Usamos FileReader para leer como ArrayBuffer y luego parseamos con SheetJS (si disponible)
-      // Como SheetJS no está instalado, parseamos CSV básico o pedimos al usuario usar el xlsx parser
-      // Verificar si xlsx está disponible
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const XLSX = (window as any).XLSX
       if (!XLSX) {
-        // Cargar SheetJS dinámicamente
         await new Promise<void>((resolve, reject) => {
           const script = document.createElement('script')
           script.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js'
@@ -86,59 +97,61 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
       const wb = XLSXLib.read(buffer, { type: 'array', cellDates: true })
 
       const resultado: EquipoImportado[] = []
+      const resultadoVarios: ItemVarios[] = []
       let fechaArchivo = ''
 
-      // --- ARNESES (hoja 'stock arneses') ---
+      // --- ARNESES (hoja 'stock arneses', datos desde índice 3) ---
       const sheetArn = wb.Sheets['stock arneses']
       if (sheetArn) {
         const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetArn, { header: 1, defval: '' })
-        // Fila 2 (índice 1) tiene la fecha en col 5
         const fechaRaw = rows[1]?.[5]
         if (fechaRaw instanceof Date) fechaArchivo = fechaRaw.toLocaleDateString('es-AR')
         else if (fechaRaw) fechaArchivo = String(fechaRaw)
 
-        // Datos desde fila 5 (índice 4)
-        for (let i = 4; i < rows.length; i++) {
+        for (let i = 3; i < rows.length; i++) {
           const r = rows[i] as unknown[]
-          const marca = String(r[2] || '').trim()
-          const modelo = String(r[3] || '').trim()
+          const tipo = String(r[2] || '').trim()
+          const marca = String(r[3] || '').trim()
+          const modelo = String(r[4] || '').trim()
           if (!marca && !modelo) continue
-          const serie = String(r[4] || '').trim()
-          const ubicRaw = String(r[5] || '').trim()
-          const ubicacion = mapUbicacion(ubicRaw)
-          const instrRaw = String(r[6] || '').trim()
+          const serie = String(r[5] || '').trim()
           const sector = normalizarSector(String(r[1] || '').trim())
+          const instrRaw = String(r[7] || '').trim()
+          const statusRaw = String(r[11] || '').trim()
+          const ubicacion = mapUbicacionStatus(statusRaw)
+          const descripcion = String(r[12] || '').trim()
 
           resultado.push({
-            tipo: 'arnes',
+            tipo: tipo.toLowerCase().includes('polea') ? 'polea' : 'arnes',
             sector,
             marca,
             modelo,
             numero_serie: serie,
             ubicacion,
             instructor: instrRaw,
-            uso_actual: mapUsoActual(instrRaw || ubicRaw, ubicacion),
-            comprado: String(r[7] || ''),
-            primer_uso: String(r[8] || ''),
-            observaciones: String(r[9] || ''),
+            uso_actual: mapUsoActual(statusRaw, ubicacion),
+            comprado: String(r[8] || ''),
+            primer_uso: String(r[9] || ''),
+            observaciones: descripcion || String(r[10] || ''),
           })
         }
       }
 
-      // --- POLEAS (hoja 'stock poleas') ---
+      // --- POLEAS (hoja 'stock poleas', datos desde índice 3) ---
       const sheetPol = wb.Sheets['stock poleas']
       if (sheetPol) {
         const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetPol, { header: 1, defval: '' })
-        for (let i = 4; i < rows.length; i++) {
+        for (let i = 3; i < rows.length; i++) {
           const r = rows[i] as unknown[]
-          const marca = String(r[2] || '').trim()
-          const modelo = String(r[3] || '').trim()
+          const marca = String(r[3] || '').trim()
+          const modelo = String(r[4] || '').trim()
           if (!marca && !modelo) continue
-          const serie = String(r[4] || '').trim()
-          const ubicRaw = String(r[5] || '').trim()
-          const ubicacion = mapUbicacion(ubicRaw)
-          const instrRaw = String(r[6] || '').trim()
+          const serie = String(r[5] || '').trim()
           const sector = normalizarSector(String(r[1] || '').trim())
+          const instrRaw = String(r[7] || '').trim()
+          const statusRaw = String(r[11] || '').trim()
+          const ubicacion = mapUbicacionStatus(statusRaw)
+          const descripcion = String(r[12] || '').trim()
 
           resultado.push({
             tipo: 'polea',
@@ -148,43 +161,111 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
             numero_serie: serie,
             ubicacion,
             instructor: instrRaw,
-            uso_actual: mapUsoActual(instrRaw || ubicRaw, ubicacion),
-            comprado: String(r[7] || ''),
-            primer_uso: String(r[8] || ''),
-            observaciones: String(r[9] || ''),
+            uso_actual: mapUsoActual(statusRaw, ubicacion),
+            comprado: String(r[8] || ''),
+            primer_uso: String(r[9] || ''),
+            observaciones: descripcion || String(r[10] || ''),
           })
         }
       }
 
-      // --- CASCOS (hoja 'Stock cascos') ---
+      // --- CASCOS (hoja 'Stock cascos', datos desde índice 2) ---
+      // col[0]=Ficha, col[1]=SECTOR, col[2]=Equipo, col[3]=MARCA, col[4]=USO, col[5]=MODELO,
+      // col[6]=TALLE, col[7]=INGRESO, col[8]=COLOR, col[9]=EN USO, col[10]=DEPOSITO,
+      // col[11]=PARA REPARAR, col[12]=BAJA, col[13]=observacion, col[14]=TOTAL
       const sheetCasc = wb.Sheets['Stock cascos']
       if (sheetCasc) {
         const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetCasc, { header: 1, defval: '' })
-        // Datos desde fila 6 (índice 5): Ficha, INGRESO, SECTOR, USO, MARCA, MODELO, TALLE, COLOR, EN USO, DEPOSITO, PARA REPARAR, BAJA, obs
-        for (let i = 5; i < rows.length; i++) {
+        for (let i = 2; i < rows.length; i++) {
           const r = rows[i] as unknown[]
-          const marca = String(r[5] || '').trim()
-          const modelo = String(r[6] || '').trim()
+          const marca = String(r[3] || '').trim()
+          const modelo = String(r[5] || '').trim()
           if (!marca && !modelo) continue
+          const talle = String(r[6] || '').trim()
+          const color = String(r[8] || '').trim()
           const enUso = Number(r[9]) || 0
           const deposito = Number(r[10]) || 0
           const reparar = Number(r[11]) || 0
           const baja = Number(r[12]) || 0
-          const sector = normalizarSector(String(r[3] || '').trim())
+          const sector = normalizarSector(String(r[1] || '').trim())
           const obs = String(r[13] || '').trim()
-          const talle = String(r[7] || '').trim()
-          const color = String(r[8] || '').trim()
 
-          // Expandir en filas individuales según cantidades
-          for (let n = 0; n < enUso; n++) resultado.push({ tipo: 'casco', sector, marca, modelo: `${modelo} ${talle} ${color}`.trim(), numero_serie: `${marca}-${modelo}-${i}-eu-${n}`, ubicacion: 'en_uso', instructor: '', uso_actual: 'turista', comprado: '', primer_uso: '', observaciones: obs })
-          for (let n = 0; n < deposito; n++) resultado.push({ tipo: 'casco', sector, marca, modelo: `${modelo} ${talle} ${color}`.trim(), numero_serie: `${marca}-${modelo}-${i}-dep-${n}`, ubicacion: 'deposito', instructor: '', uso_actual: 'deposito', comprado: '', primer_uso: '', observaciones: obs })
-          for (let n = 0; n < reparar; n++) resultado.push({ tipo: 'casco', sector, marca, modelo: `${modelo} ${talle} ${color}`.trim(), numero_serie: `${marca}-${modelo}-${i}-rep-${n}`, ubicacion: 'para_reparar', instructor: '', uso_actual: 'deposito', comprado: '', primer_uso: '', observaciones: obs })
-          for (let n = 0; n < baja; n++) resultado.push({ tipo: 'casco', sector, marca, modelo: `${modelo} ${talle} ${color}`.trim(), numero_serie: `${marca}-${modelo}-${i}-baja-${n}`, ubicacion: 'baja', instructor: '', uso_actual: 'baja', comprado: '', primer_uso: '', observaciones: obs })
+          for (let n = 0; n < enUso; n++) resultado.push({ tipo: 'casco', sector, marca, modelo: `${modelo} ${talle} ${color}`.trim(), numero_serie: `${marca}-${modelo}-${talle}-${color}-eu${n}`, ubicacion: 'en_uso', instructor: '', uso_actual: 'turista', comprado: '', primer_uso: '', observaciones: obs })
+          for (let n = 0; n < deposito; n++) resultado.push({ tipo: 'casco', sector, marca, modelo: `${modelo} ${talle} ${color}`.trim(), numero_serie: `${marca}-${modelo}-${talle}-${color}-dep${n}`, ubicacion: 'deposito', instructor: '', uso_actual: 'deposito', comprado: '', primer_uso: '', observaciones: obs })
+          for (let n = 0; n < reparar; n++) resultado.push({ tipo: 'casco', sector, marca, modelo: `${modelo} ${talle} ${color}`.trim(), numero_serie: `${marca}-${modelo}-${talle}-${color}-rep${n}`, ubicacion: 'para_reparar', instructor: '', uso_actual: 'deposito', comprado: '', primer_uso: '', observaciones: obs })
+          for (let n = 0; n < baja; n++) resultado.push({ tipo: 'casco', sector, marca, modelo: `${modelo} ${talle} ${color}`.trim(), numero_serie: `${marca}-${modelo}-${talle}-${color}-baja${n}`, ubicacion: 'baja', instructor: '', uso_actual: 'baja', comprado: '', primer_uso: '', observaciones: obs })
+        }
+      }
+
+      // --- ARCOS (hoja 'stock arcos', datos desde índice 2) ---
+      // col[1]=ficha, col[2]=SECTOR, col[3]=Equipo, col[4]=MARCA, col[5]=MODELO,
+      // col[6]=COLOR, col[7]=DUREZA, col[8]=LATERALIDAD, col[9]=ubicacion, col[10]=OBSERVACIONES
+      const sheetArc = wb.Sheets['stock arcos']
+      if (sheetArc) {
+        const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetArc, { header: 1, defval: '' })
+        for (let i = 2; i < rows.length; i++) {
+          const r = rows[i] as unknown[]
+          const marca = String(r[4] || '').trim()
+          const modelo = String(r[5] || '').trim()
+          if (!marca && !modelo) continue
+          const color = String(r[6] || '').trim()
+          const dureza = String(r[7] || '').trim()
+          const lateralidad = String(r[8] || '').trim()
+          const sector = normalizarSector(String(r[2] || '').trim())
+          const ubicRaw = String(r[9] || '').trim()
+          const obs = String(r[10] || '').trim()
+          const caracteristicas = [color, dureza, lateralidad].filter(Boolean).join(' ')
+          const ficha = String(r[1] || i).trim()
+
+          resultado.push({
+            tipo: 'arco',
+            sector,
+            marca,
+            modelo,
+            numero_serie: ficha,
+            ubicacion: mapUbicacionStatus(ubicRaw),
+            instructor: '',
+            uso_actual: 'turista',
+            comprado: '',
+            primer_uso: '',
+            observaciones: obs,
+            caracteristicas,
+          })
+        }
+      }
+
+      // --- VARIOS (hoja 'stock  varios', datos desde índice 4) ---
+      // col[1]=ficha, col[2]=SECTOR, col[3]=Equipo, col[4]=caracteristicas,
+      // col[5]=EN USO, col[6]=EN DEPOSITO, col[7]=PARA REPARAR, col[8]=REPUESTOS, col[9]=TOTAL
+      const sheetVar = wb.Sheets['stock  varios']
+      if (sheetVar) {
+        const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetVar, { header: 1, defval: '' })
+        for (let i = 4; i < rows.length; i++) {
+          const r = rows[i] as unknown[]
+          const nombre = String(r[3] || '').trim()
+          if (!nombre) continue
+          const sector = normalizarSector(String(r[2] || '').trim())
+          const caracteristicas = String(r[4] || '').trim()
+          const enUso = Number(r[5]) || 0
+          const deposito = Number(r[6]) || 0
+          const reparar = Number(r[7]) || 0
+          const repuestos = Number(r[8]) || 0
+
+          resultadoVarios.push({
+            sector,
+            nombre,
+            caracteristicas,
+            enUso,
+            deposito,
+            reparar,
+            repuestos,
+          })
         }
       }
 
       setFechaDoc(fechaArchivo)
       setEquipos(resultado)
+      setVarios(resultadoVarios)
       setPaso('preview')
     } catch (e) {
       setError(String(e))
@@ -197,16 +278,19 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
       arneses: equipos.filter(e => e.tipo === 'arnes').length,
       poleas: equipos.filter(e => e.tipo === 'polea').length,
       cascos: equipos.filter(e => e.tipo === 'casco').length,
+      arcos: equipos.filter(e => e.tipo === 'arco').length,
+      varios: varios.length,
       total: equipos.length,
       fecha: new Date().toISOString().split('T')[0],
     }
-    onImportar(equipos, resumen)
+    onImportar(equipos, varios, resumen)
     setPaso('ok')
   }
 
   const arneses = equipos.filter(e => e.tipo === 'arnes')
   const poleas = equipos.filter(e => e.tipo === 'polea')
   const cascos = equipos.filter(e => e.tipo === 'casco')
+  const arcos = equipos.filter(e => e.tipo === 'arco')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6"
@@ -238,9 +322,11 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
                 <p className="text-sm font-semibold mb-1" style={{ color: '#92400e' }}>📋 Formato esperado</p>
                 <p className="text-xs" style={{ color: '#78350f', lineHeight: 1.6 }}>
                   El archivo debe ser el Excel <strong>Stock General AEA.xlsx</strong> con las hojas:<br />
-                  • <strong>stock arneses</strong> — datos desde fila 5, columnas: Ficha, Sector, Marca, Modelo, Serie, Ubicación...<br />
+                  • <strong>stock arneses</strong> — datos desde fila 4, col[11]=status<br />
                   • <strong>stock poleas</strong> — misma estructura<br />
-                  • <strong>Stock cascos</strong> — con columnas EN USO / DEPOSITO / PARA REPARAR / BAJA
+                  • <strong>Stock cascos</strong> — con columnas EN USO / DEPOSITO / PARA REPARAR / BAJA<br />
+                  • <strong>stock arcos</strong> — arcos individuales de arquería<br />
+                  • <strong>stock  varios</strong> — guantines, lentes, protectores por sector
                 </p>
               </div>
 
@@ -266,7 +352,7 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
             <div className="flex flex-col items-center justify-center py-16">
               <div className="text-4xl mb-4">⏳</div>
               <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, color: 'var(--text-main)' }}>Procesando Excel...</p>
-              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>Leyendo arneses, poleas y cascos</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>Leyendo arneses, poleas, cascos, arcos y varios</p>
             </div>
           )}
 
@@ -280,15 +366,17 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
               )}
 
               {/* Resumen */}
-              <div className="grid grid-cols-3 gap-3 mb-5">
+              <div className="grid grid-cols-5 gap-2 mb-5">
                 {[
                   { n: arneses.length, label: 'Arneses',  color: 'var(--c-teal)',   emoji: '🦺' },
                   { n: poleas.length,  label: 'Poleas',   color: '#1d4ed8',          emoji: '⚙️' },
                   { n: cascos.length,  label: 'Cascos',   color: '#7c3aed',          emoji: '⛑️' },
+                  { n: arcos.length,   label: 'Arcos',    color: '#92400e',          emoji: '🏹' },
+                  { n: varios.length,  label: 'Varios',   color: '#64748b',          emoji: '📦' },
                 ].map(({ n, label, color, emoji }) => (
-                  <div key={label} className="rounded-2xl p-4 text-center" style={{ border: '1px solid var(--border)', background: 'white' }}>
-                    <p className="text-3xl font-black" style={{ color }}>{n}</p>
-                    <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{emoji} {label}</p>
+                  <div key={label} className="rounded-2xl p-3 text-center" style={{ border: '1px solid var(--border)', background: 'white' }}>
+                    <p className="text-2xl font-black" style={{ color }}>{n}</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{emoji} {label}</p>
                   </div>
                 ))}
               </div>
@@ -317,7 +405,7 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
 
               {/* Preview poleas */}
               {poleas.length > 0 && (
-                <div>
+                <div className="mb-4">
                   <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
                     ⚙️ Poleas (primeros {Math.min(poleas.length, 5)} de {poleas.length})
                   </p>
@@ -336,6 +424,43 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
                   </div>
                 </div>
               )}
+
+              {/* Preview arcos */}
+              {arcos.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+                    🏹 Arcos ({arcos.length})
+                  </p>
+                  <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                    {arcos.slice(0, 5).map((e, i) => (
+                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 text-sm"
+                        style={{ borderBottom: i < Math.min(arcos.length, 5) - 1 ? '1px solid var(--border-light)' : 'none', background: i % 2 ? 'white' : 'var(--bg-subtle)' }}>
+                        <span className="flex-1 truncate" style={{ color: 'var(--text-main)' }}>{e.marca} {e.modelo}</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{e.caracteristicas}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Preview varios */}
+              {varios.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+                    📦 Varios ({varios.length} ítems)
+                  </p>
+                  <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                    {varios.slice(0, 5).map((v, i) => (
+                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 text-sm"
+                        style={{ borderBottom: i < Math.min(varios.length, 5) - 1 ? '1px solid var(--border-light)' : 'none', background: i % 2 ? 'white' : 'var(--bg-subtle)' }}>
+                        <span style={{ color: 'var(--text-sub)', flexShrink: 0, fontSize: 11 }}>{v.sector}</span>
+                        <span className="flex-1 truncate" style={{ color: 'var(--text-main)' }}>{v.nombre}</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>uso:{v.enUso} dep:{v.deposito}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -347,7 +472,7 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
                 {equipos.length} equipos importados
               </p>
               <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 6 }}>
-                {arneses.length} arneses · {poleas.length} poleas · {cascos.length} cascos
+                {arneses.length} arneses · {poleas.length} poleas · {cascos.length} cascos · {arcos.length} arcos · {varios.length} items varios
               </p>
             </div>
           )}
@@ -377,7 +502,7 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
             <button onClick={confirmar}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white"
               style={{ background: 'var(--c-teal)' }}>
-              ✓ Cargar {equipos.length} equipos al sistema
+              ✓ Cargar {equipos.length} equipos + {varios.length} varios
             </button>
           )}
         </div>

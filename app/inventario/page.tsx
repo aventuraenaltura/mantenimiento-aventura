@@ -5,8 +5,9 @@ import ControlStock from './ControlStock'
 import ImportarStockInicial from '@/components/ImportarStockInicial'
 import RegistrarReparacion from '@/components/RegistrarReparacion'
 import ReportePDF from '@/components/ReportePDF'
+import type { ItemVarios } from '@/components/ImportarExcelStock'
 
-type TipoEquipo = 'arnes' | 'polea' | 'casco' | 'mosqueton' | 'guantin'
+type TipoEquipo = 'arnes' | 'polea' | 'casco' | 'mosqueton' | 'guantin' | 'arco'
 type Ubicacion = 'en_uso' | 'deposito' | 'para_reparar' | 'baja'
 type Estado = 'nuevo' | 'bueno' | 'regular' | 'revisar' | 'baja'
 
@@ -23,7 +24,8 @@ interface Equipo {
   estado: Estado
   fecha_ingreso: string
   observaciones: string
-  historial: { fecha: string; accion: string; por: string }[]
+  caracteristicas?: string
+  historial: { fecha: string; accion: string; por: string; ubicacion?: string }[]
 }
 
 interface RegistroStock {
@@ -134,7 +136,7 @@ const ETIQUETAS_ESTADO: Record<Estado, { label: string; color: string }> = {
 }
 
 const ETIQUETAS_TIPO: Record<TipoEquipo, string> = {
-  arnes: 'Arnés', polea: 'Polea', casco: 'Casco', mosqueton: 'Mosquetón', guantin: 'Guantín',
+  arnes: 'Arnés', polea: 'Polea', casco: 'Casco', mosqueton: 'Mosquetón', guantin: 'Guantín', arco: 'Arco',
 }
 
 // ——— Módulo individual de guantín ———
@@ -563,6 +565,9 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
   const [formNuevaFunda, setFormNuevaFunda] = useState({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
   const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false)
   const [formNuevo, setFormNuevo] = useState({ modelo: '', marca: '', color: '', talle: '', enUso: 0, deposito: 0, reparar: 0, baja: 0, nota: '' })
+  const [itemsVarios, setItemsVarios] = useState<ItemVarios[]>([])
+  const [fichaEquipo, setFichaEquipo] = useState<Equipo | null>(null)
+  const [formFicha, setFormFicha] = useState<{ ubicacion: Ubicacion; nota: string }>({ ubicacion: 'en_uso', nota: '' })
 
   React.useEffect(() => {
     async function cargar() {
@@ -577,6 +582,10 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
       setCascos(c ? JSON.parse(c) : [])
       setBolsitas(b ? JSON.parse(b) : [])
       setFundas(f ? JSON.parse(f) : [])
+
+      // Cargar items varios del sector
+      const variosGuardados = JSON.parse(localStorage.getItem(`inv_${sector}_varios`) || '[]')
+      setItemsVarios(variosGuardados)
 
       // Arquería: cargar accesorios específicos
       if (sector === 'arqueria') {
@@ -633,6 +642,27 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
     if (busqueda && !`${e.numero_interno} ${e.marca} ${e.modelo} ${e.numero_serie}`.toLowerCase().includes(busqueda.toLowerCase())) return false
     return true
   })
+
+  function guardarEventoFicha() {
+    if (!fichaEquipo || !formFicha.nota.trim()) return
+    const por = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}').nombre || 'Usuario' } catch { return 'Usuario' } })()
+    const nuevoEvento = {
+      fecha: new Date().toISOString().split('T')[0],
+      accion: formFicha.nota.trim(),
+      ubicacion: formFicha.ubicacion,
+      por,
+    }
+    const equipoActualizado = {
+      ...fichaEquipo,
+      ubicacion: formFicha.ubicacion,
+      historial: [...(fichaEquipo.historial || []), nuevoEvento]
+    }
+    const nuevosEquipos = equipos.map(e => e.id === fichaEquipo.id ? equipoActualizado : e)
+    setEquipos(nuevosEquipos)
+    localStorage.setItem(`inv_${sector}_equipos`, JSON.stringify(nuevosEquipos))
+    setFichaEquipo(equipoActualizado)
+    setFormFicha({ ubicacion: equipoActualizado.ubicacion as Ubicacion, nota: '' })
+  }
 
   function agregarEvento() {
     if (!equipoSeleccionado || !formEvento.accion || !formEvento.por) return
@@ -1056,6 +1086,13 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                           {ETIQUETAS_UBICACION[eq.ubicacion].label}
                         </span>
                         <p className="text-xs mt-1" style={{ color: '#a0aec0' }}>{ETIQUETAS_ESTADO[eq.estado].label}</p>
+                        {puedeEditar && (
+                          <button onClick={ev => { ev.stopPropagation(); setFichaEquipo(eq); setFormFicha({ ubicacion: eq.ubicacion as Ubicacion, nota: '' }) }}
+                            className="text-xs mt-1 block"
+                            style={{ color: 'var(--c-teal)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                            Ver ficha →
+                          </button>
+                        )}
                       </div>
                     </div>
                   )
@@ -1352,6 +1389,173 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
               ))}
             </SeccionStock>
               </>
+            )}
+
+            {/* Arcos (solo arquería) */}
+            {sector === 'arqueria' && (() => {
+              const arcos = equipos.filter(e => e.tipo === 'arco')
+              if (arcos.length === 0) return null
+              return (
+                <div className="mt-2">
+                  <p className="text-xs font-bold uppercase tracking-widest mb-3"
+                     style={{ color: 'var(--text-muted)', letterSpacing: '2px' }}>
+                    🏹 Arcos ({arcos.length})
+                  </p>
+                  <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'white' }}>
+                    {arcos.map((arco, i) => (
+                      <div key={arco.id} className="flex items-center gap-3 px-4 py-3"
+                        style={{ borderBottom: i < arcos.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-main)' }}>
+                            {arco.marca} {arco.modelo}
+                          </p>
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                            {arco.caracteristicas || arco.observaciones}
+                          </p>
+                        </div>
+                        <span className="text-xs font-bold px-2 py-1 rounded-lg" style={{
+                          background: arco.ubicacion === 'en_uso' ? '#dcfce7' : arco.ubicacion === 'baja' ? '#fff5f5' : '#f1f5f9',
+                          color: arco.ubicacion === 'en_uso' ? '#16a34a' : arco.ubicacion === 'baja' ? '#dc2626' : '#64748b'
+                        }}>
+                          {arco.ubicacion === 'en_uso' ? 'En uso' : arco.ubicacion === 'deposito' ? 'Depósito' : arco.ubicacion === 'para_reparar' ? 'Reparar' : 'Baja'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Equipo variado (guantines, protectores, lentes, etc.) */}
+            {itemsVarios.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-bold uppercase tracking-widest mb-3"
+                   style={{ color: 'var(--text-muted)', letterSpacing: '2px' }}>
+                  📦 Equipo variado
+                </p>
+                <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'white' }}>
+                  {itemsVarios.map((item, i) => (
+                    <div key={i} className="px-4 py-3"
+                      style={{ borderBottom: i < itemsVarios.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-main)' }}>{item.nombre}</p>
+                          {item.caracteristicas && (
+                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{item.caracteristicas}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0 flex-wrap">
+                          {item.enUso > 0 && (
+                            <span className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background: '#dcfce7', color: '#16a34a' }}>
+                              {item.enUso} uso
+                            </span>
+                          )}
+                          {item.deposito > 0 && (
+                            <span className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background: '#eff6ff', color: '#2563eb' }}>
+                              {item.deposito} dep
+                            </span>
+                          )}
+                          {item.reparar > 0 && (
+                            <span className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background: '#fff7ed', color: '#c2410c' }}>
+                              {item.reparar} rep
+                            </span>
+                          )}
+                          {item.repuestos > 0 && (
+                            <span className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
+                              {item.repuestos} rpto
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Modal ficha individual */}
+            {fichaEquipo && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                style={{ background: 'rgba(0,0,0,0.6)' }}>
+                <div className="bg-white rounded-2xl shadow-2xl w-full overflow-y-auto" style={{ maxWidth: 480, maxHeight: '90vh' }}>
+                  <div className="px-5 py-4 flex items-start justify-between"
+                    style={{ background: '#1a202c', borderRadius: '16px 16px 0 0' }}>
+                    <div>
+                      <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 15, color: 'white' }}>
+                        {fichaEquipo.tipo === 'arnes' ? '🦺' : fichaEquipo.tipo === 'polea' ? '⚙️' : fichaEquipo.tipo === 'arco' ? '🏹' : '⛑️'} {fichaEquipo.marca} {fichaEquipo.modelo}
+                      </p>
+                      <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 2 }}>
+                        Serie: {fichaEquipo.numero_serie} · {fichaEquipo.sector}
+                      </p>
+                    </div>
+                    <button onClick={() => setFichaEquipo(null)} className="w-8 h-8 rounded-full flex items-center justify-center text-white flex-shrink-0"
+                      style={{ background: 'rgba(255,255,255,0.15)' }}>✕</button>
+                  </div>
+                  <div className="p-5">
+                    {/* Ubicación actual */}
+                    <div className="mb-4">
+                      <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Estado actual</p>
+                      <span className={`text-xs px-3 py-1.5 rounded-full font-bold ${ETIQUETAS_UBICACION[fichaEquipo.ubicacion as Ubicacion]?.color ?? ''}`}>
+                        {ETIQUETAS_UBICACION[fichaEquipo.ubicacion as Ubicacion]?.label ?? fichaEquipo.ubicacion}
+                      </span>
+                    </div>
+                    {/* Historial */}
+                    <div className="mb-4">
+                      <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Historial ({fichaEquipo.historial?.length ?? 0} eventos)</p>
+                      {(fichaEquipo.historial?.length ?? 0) === 0 ? (
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Sin eventos registrados</p>
+                      ) : (
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                          {[...(fichaEquipo.historial ?? [])].reverse().map((h, i) => (
+                            <div key={i} className="pl-3 py-1.5 rounded-r-lg" style={{ borderLeft: '3px solid var(--c-teal)', background: '#f0fdfb' }}>
+                              <p className="text-xs font-semibold" style={{ color: '#1c2533' }}>{h.accion}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <p className="text-xs" style={{ color: '#a0aec0' }}>{h.fecha} — {h.por}</p>
+                                {h.ubicacion && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#e6f5f4', color: '#3a9e96' }}>{h.ubicacion}</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {/* Formulario nuevo evento */}
+                    {puedeEditar && (
+                      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                        <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Registrar evento</p>
+                        <select
+                          value={formFicha.ubicacion}
+                          onChange={e => setFormFicha(f => ({ ...f, ubicacion: e.target.value as Ubicacion }))}
+                          className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none mb-2"
+                          style={{ border: '1px solid var(--border)', background: '#faf8f4' }}>
+                          <option value="en_uso">En uso</option>
+                          <option value="deposito">Depósito</option>
+                          <option value="para_reparar">Para reparar</option>
+                          <option value="baja">Baja definitiva</option>
+                        </select>
+                        <input type="text" placeholder="Nota (obligatorio)"
+                          value={formFicha.nota}
+                          onChange={e => setFormFicha(f => ({ ...f, nota: e.target.value }))}
+                          className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none mb-3"
+                          style={{ border: '1px solid var(--border)', background: '#faf8f4' }} />
+                        <div className="flex gap-2">
+                          <button onClick={guardarEventoFicha}
+                            className="flex-1 text-white text-sm font-bold py-2.5 rounded-xl"
+                            style={{ background: 'var(--c-teal)' }}>
+                            Guardar evento
+                          </button>
+                          <button onClick={() => setFichaEquipo(null)}
+                            className="px-4 py-2 text-sm rounded-xl"
+                            style={{ border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                            Cerrar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Detalle equipo seleccionado */}

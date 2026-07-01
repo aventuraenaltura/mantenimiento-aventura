@@ -91,7 +91,7 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
       // --- ARNESES (hoja 'stock arneses') ---
       const sheetArn = wb.Sheets['stock arneses']
       if (sheetArn) {
-        const rows: unknown[][] = XLSXLib.utils.sheet_to_array(sheetArn)
+        const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetArn, { header: 1, defval: '' })
         // Fila 2 (índice 1) tiene la fecha en col 5
         const fechaRaw = rows[1]?.[5]
         if (fechaRaw instanceof Date) fechaArchivo = fechaRaw.toLocaleDateString('es-AR')
@@ -128,7 +128,7 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
       // --- POLEAS (hoja 'stock poleas') ---
       const sheetPol = wb.Sheets['stock poleas']
       if (sheetPol) {
-        const rows: unknown[][] = XLSXLib.utils.sheet_to_array(sheetPol)
+        const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetPol, { header: 1, defval: '' })
         for (let i = 4; i < rows.length; i++) {
           const r = rows[i] as unknown[]
           const marca = String(r[2] || '').trim()
@@ -159,7 +159,7 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
       // --- CASCOS (hoja 'Stock cascos') ---
       const sheetCasc = wb.Sheets['Stock cascos']
       if (sheetCasc) {
-        const rows: unknown[][] = XLSXLib.utils.sheet_to_array(sheetCasc)
+        const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetCasc, { header: 1, defval: '' })
         // Datos desde fila 6 (índice 5): Ficha, INGRESO, SECTOR, USO, MARCA, MODELO, TALLE, COLOR, EN USO, DEPOSITO, PARA REPARAR, BAJA, obs
         for (let i = 5; i < rows.length; i++) {
           const r = rows[i] as unknown[]

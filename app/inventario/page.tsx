@@ -1485,7 +1485,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                         {fichaEquipo.tipo === 'arnes' ? '🦺' : fichaEquipo.tipo === 'polea' ? '⚙️' : fichaEquipo.tipo === 'arco' ? '🏹' : '⛑️'} {fichaEquipo.marca} {fichaEquipo.modelo}
                       </p>
                       <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 2 }}>
-                        Serie: {fichaEquipo.numero_serie} · {fichaEquipo.sector}
+                        Serie: {fichaEquipo.numero_serie} · {fichaEquipo.actividad}
                       </p>
                     </div>
                     <button onClick={() => setFichaEquipo(null)} className="w-8 h-8 rounded-full flex items-center justify-center text-white flex-shrink-0"

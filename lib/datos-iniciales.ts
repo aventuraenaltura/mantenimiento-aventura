@@ -50,8 +50,8 @@ export const PLANILLAS_INICIALES = [
     materiales: ['EPP completo', 'Llave de tubo', 'Torquímetro'],
     instructivo: 'Verificar que todos los prensacables estén correctamente apretados. Controlar tensores y sus trabas de cable de 6mm. Las trabas no deben ser removidas y deben estar instaladas en forma permanente. Verificar marcas de pintura.' },
 
-  { codigo: 'MP20-007', nombre: 'Plataforma de Vuelo', actividad_id: 'tirolesa', frecuencia: 'mensual',
-    descripcion: 'Control mensual del estado estructural de la plataforma de vuelo.',
+  { codigo: 'MP20-007', nombre: 'Plataforma de Vuelo', actividad_id: 'tirolesa', frecuencia: 'trimestral',
+    descripcion: 'Control trimestral del estado estructural de la plataforma de vuelo.',
     tareas: ['Control de estructura de madera', 'Verificación de piso antideslizante', 'Control de barandas y pasamanos', 'Verificación de acceso y escalera'],
     materiales: ['Herramientas de carpintería', 'Tornillos', 'Sellador de madera'],
     instructivo: 'Verificar visualmente el estado de todos los elementos de la plataforma. Controlar la firmeza de barandas y pasamanos. Verificar el estado del piso antideslizante.' },

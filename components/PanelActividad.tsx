@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
 import { getFechaInicio, getProximaFechaDesdeConfig, getFechasDelMes } from '@/lib/config'
+import { cargarConfigFechas, guardarConfigFecha } from '@/lib/db'
 import type { Planilla } from '@/lib/supabase'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -81,6 +82,15 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   const [mostrarPDFMes, setMostrarPDFMes] = useState(false)
   const [ejecuciones, setEjecuciones] = useState<Ejecucion[]>([])
   const [form, setForm] = useState({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', controlo: '', ingeniero: '' })
+
+  // Cargar ingeniero guardado al montar
+  useEffect(() => {
+    cargarConfigFechas().then(config => {
+      if (config?.['ingeniero_cargo']) {
+        setForm(f => ({ ...f, ingeniero: config['ingeniero_cargo'] }))
+      }
+    })
+  }, [])
   const [archivoFirmado, setArchivoFirmado] = useState<File | null>(null)
   const [archivosAgrimensor, setArchivosAgrimensor] = useState<File[]>([])
   const [mostrarHistorial, setMostrarHistorial] = useState(false)
@@ -1018,7 +1028,11 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
               </div>
               <div className="col-span-2">
                 <label className="text-xs font-medium text-gray-600">Ingeniero a cargo</label>
-                <input type="text" value={form.ingeniero} onChange={e => setForm(f => ({...f, ingeniero: e.target.value}))}
+                <input type="text" value={form.ingeniero} onChange={e => {
+                    const v = e.target.value
+                    setForm(f => ({...f, ingeniero: v}))
+                    guardarConfigFecha('ingeniero_cargo', v)
+                  }}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-0.5" placeholder="Nombre del ingeniero responsable" />
               </div>
               <div className="col-span-2">

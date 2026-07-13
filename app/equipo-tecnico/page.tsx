@@ -3,6 +3,11 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getSesion } from '@/lib/usuarios'
 import ImportarExcelStock, { type EquipoImportado, type ItemVarios } from '@/components/ImportarExcelStock'
+import {
+  cargarEquiposSector, upsertEquiposSector, borrarEquiposTodos,
+  upsertVariosSector, borrarVariosTodos,
+  cargarHistorialCargas, insertarCargaHistorial, borrarHistorialCargas,
+} from '@/lib/db'
 
 interface Equipo {
   id: string
@@ -35,8 +40,10 @@ interface StockSector {
 interface CargaHistorial {
   id: string
   fecha: string
-  fechaDoc: string
-  cargadoPor: string
+  fecha_doc?: string
+  fechaDoc?: string
+  cargado_por?: string
+  cargadoPor?: string
   arneses: number
   poleas: number
   cascos: number
@@ -50,16 +57,6 @@ const SECTORES = [
   { slug: 'parque',   nombre: 'Parque Aéreo', icono: '🌲', color: '#4FC3F7', textColor: '#1a1a1a' },
   { slug: 'arqueria', nombre: 'Arquería',     icono: '🎯', color: '#2d8a4e', textColor: '#ffffff' },
 ]
-
-function loadSector(slug: string): StockSector {
-  const parse = (key: string) => { try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] } }
-  return {
-    equipos:   parse(`inv_${slug}_equipos`),
-    cascos:    parse(`inv_${slug}_cascos`),
-    guantines: parse(`inv_${slug}_guantines`),
-    lentes:    parse(`inv_${slug}_lentes`),
-  }
-}
 
 function BarraStat({ label, valor, total, color }: { label: string; valor: number; total: number; color: string }) {
   const pct = total > 0 ? (valor / total) * 100 : 0
@@ -76,22 +73,28 @@ function BarraStat({ label, valor, total, color }: { label: string; valor: numbe
   )
 }
 
-function imprimirStockActual(stocks: Record<string, StockSector>, historial: CargaHistorial[]) {
-  const ultima = historial[historial.length - 1]
+function getNombreCarga(c: CargaHistorial): string {
+  return c.cargadoPor ?? c.cargado_por ?? 'Sistema'
+}
+
+function getFechaDoc(c: CargaHistorial): string {
+  return c.fechaDoc ?? c.fecha_doc ?? ''
+}
+
+function imprimirStockActual(equiposTodos: Equipo[], historial: CargaHistorial[]) {
+  const ultima = historial[0]
   const hoy = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
   const filasSectores = SECTORES.map(s => {
-    const st = stocks[s.slug]
-    const arneses = st?.equipos.filter(e => e.tipo === 'arnes').length ?? 0
-    const poleas  = st?.equipos.filter(e => e.tipo === 'polea').length ?? 0
-    const cascos  = st?.cascos.reduce((a, c) => a + c.enUso + c.deposito + c.reparar, 0) ?? 0
-    const enUso   = st?.equipos.filter(e => e.ubicacion === 'en_uso').length ?? 0
-    const reparar = st?.equipos.filter(e => e.ubicacion === 'para_reparar').length ?? 0
+    const equiposSector = equiposTodos.filter(e => e.sector === s.slug)
+    const arneses = equiposSector.filter(e => e.tipo === 'arnes').length
+    const poleas  = equiposSector.filter(e => e.tipo === 'polea').length
+    const enUso   = equiposSector.filter(e => e.ubicacion === 'en_uso').length
+    const reparar = equiposSector.filter(e => e.ubicacion === 'para_reparar').length
     return `<tr>
       <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-weight:700">${s.icono} ${s.nombre}</td>
       <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;color:#16a34a;font-weight:700">${arneses}</td>
       <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;color:#2563eb;font-weight:700">${poleas}</td>
-      <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;color:#7c3aed;font-weight:700">${cascos}</td>
       <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;color:#0d9e96;font-weight:700">${enUso}</td>
       <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;color:#f97316;font-weight:700">${reparar}</td>
     </tr>`
@@ -122,11 +125,11 @@ function imprimirStockActual(stocks: Record<string, StockSector>, historial: Car
     </div>
     <div class="meta">
       <span>📅 Fecha de control: <strong>${hoy}</strong></span>
-      ${ultima ? `<span>📥 Última carga: <strong>${ultima.fecha}</strong> por ${ultima.cargadoPor}</span>` : ''}
+      ${ultima ? `<span>📥 Última carga: <strong>${ultima.fecha}</strong> por ${getNombreCarga(ultima)}</span>` : ''}
     </div>
     <table>
       <thead><tr>
-        <th>Sector</th><th>Arneses</th><th>Poleas</th><th>Cascos</th><th>En uso</th><th>Para reparar</th>
+        <th>Sector</th><th>Arneses</th><th>Poleas</th><th>En uso</th><th>Para reparar</th>
       </tr></thead>
       <tbody>${filasSectores}</tbody>
     </table>
@@ -145,8 +148,8 @@ function imprimirStockActual(stocks: Record<string, StockSector>, historial: Car
 }
 
 export default function EquipoTecnicoPage() {
-  const [stocks, setStocks] = useState<Record<string, StockSector>>({})
-  const [cargado, setCargado] = useState(false)
+  const [equipos, setEquipos] = useState<Equipo[]>([])
+  const [loading, setLoading] = useState(true)
   const [vistaActiva, setVistaActiva] = useState<'resumen' | 'reparar' | 'historial'>('resumen')
   const [mostrarImport, setMostrarImport] = useState(false)
   const [historialCargas, setHistorialCargas] = useState<CargaHistorial[]>([])
@@ -154,15 +157,29 @@ export default function EquipoTecnicoPage() {
 
   useEffect(() => {
     setSesion(getSesion())
-    const result: Record<string, StockSector> = {}
-    for (const s of SECTORES) result[s.slug] = loadSector(s.slug)
-    setStocks(result)
-    try {
-      const raw = localStorage.getItem('historial_cargas_stock')
-      if (raw) setHistorialCargas(JSON.parse(raw))
-    } catch { /* noop */ }
-    setCargado(true)
+    async function cargar() {
+      const sectores = ['tirolesa', 'parque', 'arqueria', 'salon']
+      const todosEquipos: Equipo[] = []
+      for (const s of sectores) {
+        const eq = await cargarEquiposSector(s)
+        todosEquipos.push(...(eq as Equipo[]))
+      }
+      setEquipos(todosEquipos)
+
+      const hist = await cargarHistorialCargas()
+      setHistorialCargas(hist as CargaHistorial[])
+
+      setLoading(false)
+    }
+    cargar()
   }, [])
+
+  // Build StockSector per slug for display (cascos/guantines/lentes not in Supabase equipos — keep zeros)
+  const stocks: Record<string, StockSector> = {}
+  for (const s of SECTORES) {
+    const eq = equipos.filter(e => e.sector === s.slug)
+    stocks[s.slug] = { equipos: eq, cascos: [], guantines: [], lentes: [] }
+  }
 
   const equiposReparar: (Equipo & { sectorSlug: string })[] = []
   for (const s of SECTORES) {
@@ -171,89 +188,91 @@ export default function EquipoTecnicoPage() {
     }
   }
 
-  function handleImportar(equipos: EquipoImportado[], varios: ItemVarios[], resumen: { arneses: number; poleas: number; cascos: number; arcos?: number; varios?: number; total: number; fecha: string }) {
-    // Guardar equipos separados por sector
-    const porSector: Record<string, EquipoImportado[]> = {}
-    for (const e of equipos) {
-      if (!porSector[e.sector]) porSector[e.sector] = []
-      porSector[e.sector].push(e)
-    }
+  async function handleImportar(equiposNuevos: EquipoImportado[], varios: ItemVarios[], resumen: { arneses: number; poleas: number; cascos: number; arcos?: number; varios?: number; total: number; fecha: string }) {
+    const sectores = ['tirolesa', 'parque', 'arqueria', 'salon']
 
-    // Guardar en localStorage por sector
-    for (const [sector, items] of Object.entries(porSector)) {
-      const equiposSector = items.filter(e => e.tipo === 'arnes' || e.tipo === 'polea' || e.tipo === 'arco' || e.tipo === 'casco').map((e, i) => ({
-        id: `${e.tipo}-${e.numero_serie || i}-${sector}`,
-        tipo: e.tipo,
-        numero_interno: String(i + 1),
-        marca: e.marca,
-        modelo: e.modelo,
-        numero_serie: e.numero_serie,
-        actividad: sector,
-        ubicacion: e.ubicacion,
-        uso_actual: e.uso_actual,
-        estado: 'bueno',
-        fecha_ingreso: e.primer_uso || '',
-        observaciones: e.observaciones,
-        caracteristicas: e.caracteristicas || '',
-        historial: e.instructor ? [{ fecha: resumen.fecha, accion: `Asignado a instructor: ${e.instructor}`, por: 'Sistema' }] : [],
-      }))
-      const existing = JSON.parse(localStorage.getItem(`inv_${sector}_equipos`) || '[]')
-      const merged = [...existing]
+    for (const sector of sectores) {
+      const equiposSector = equiposNuevos.filter(e => e.sector === sector)
+      if (equiposSector.length === 0) continue
+
+      const existentes = await cargarEquiposSector(sector)
+      const existentesPorSerie = new Map((existentes as Record<string, unknown>[]).map(e => [e.numero_serie, e]))
+
+      const merged = [...existentes] as Record<string, unknown>[]
       for (const eq of equiposSector) {
-        if (!merged.find((x: Equipo) => x.numero_serie === eq.numero_serie)) merged.push(eq)
+        if (!existentesPorSerie.has(eq.numero_serie)) {
+          merged.push({
+            id: `${sector}_${eq.tipo}_${eq.numero_serie || Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+            tipo: eq.tipo,
+            sector,
+            marca: eq.marca,
+            modelo: eq.modelo,
+            numero_serie: eq.numero_serie,
+            ubicacion: eq.ubicacion,
+            instructor: eq.instructor,
+            uso_actual: eq.uso_actual,
+            comprado: eq.comprado,
+            primer_uso: eq.primer_uso,
+            observaciones: eq.observaciones,
+            caracteristicas: eq.caracteristicas || '',
+            historial: eq.instructor ? [{ fecha: resumen.fecha, accion: `Asignado a instructor: ${eq.instructor}`, por: 'Sistema' }] : [],
+          })
+        }
       }
-      localStorage.setItem(`inv_${sector}_equipos`, JSON.stringify(merged))
+
+      await upsertEquiposSector(merged, sector)
+
+      const variosSector = varios.filter(v => v.sector === sector)
+      if (variosSector.length > 0) {
+        await upsertVariosSector(variosSector, sector)
+      }
     }
 
-    // Guardar varios por sector
-    const sectoresVarios = [...new Set(varios.map(v => v.sector))]
-    for (const sector of sectoresVarios) {
-      const clave = `inv_${sector}_varios`
-      const itemsSector = varios.filter(v => v.sector === sector)
-      localStorage.setItem(clave, JSON.stringify(itemsSector))
-    }
-
-    // Registrar en historial
-    const nueva: CargaHistorial = {
-      id: `carga-${Date.now()}`,
-      fecha: new Date().toLocaleDateString('es-AR'),
-      fechaDoc: resumen.fecha,
-      cargadoPor: sesion?.nombre ?? 'Sistema',
+    const cargadoPor = sesion?.nombre ?? 'Sistema'
+    const nuevaCarga = {
+      id: `carga_${Date.now()}`,
+      fecha: new Date().toISOString().split('T')[0],
+      fecha_doc: resumen.fecha,
+      cargado_por: cargadoPor,
       arneses: resumen.arneses,
       poleas: resumen.poleas,
       cascos: resumen.cascos,
-      arcos: resumen.arcos,
-      varios: resumen.varios,
+      arcos: resumen.arcos ?? 0,
+      varios: resumen.varios ?? 0,
       total: resumen.total,
     }
-    const nuevoHistorial = [...historialCargas, nueva]
-    setHistorialCargas(nuevoHistorial)
-    localStorage.setItem('historial_cargas_stock', JSON.stringify(nuevoHistorial))
+    await insertarCargaHistorial(nuevaCarga)
 
-    // Recargar stocks
-    const result: Record<string, StockSector> = {}
-    for (const s of SECTORES) result[s.slug] = loadSector(s.slug)
-    setStocks(result)
+    const hist = await cargarHistorialCargas()
+    setHistorialCargas(hist as CargaHistorial[])
+
+    const todosEq: Equipo[] = []
+    for (const s of ['tirolesa', 'parque', 'arqueria', 'salon']) {
+      const eq = await cargarEquiposSector(s)
+      todosEq.push(...(eq as Equipo[]))
+    }
+    setEquipos(todosEq)
     setMostrarImport(false)
     setVistaActiva('historial')
   }
 
   const esAdmin = sesion?.rol === 'admin'
 
-  function borrarTodo() {
+  async function borrarTodo() {
     if (!confirm('¿Borrar todo el stock importado? Esta acción no se puede deshacer.')) return
-    const sectores = ['tirolesa', 'parque', 'arqueria', 'salon']
-    for (const s of sectores) {
-      localStorage.removeItem(`inv_${s}_equipos`)
-      localStorage.removeItem(`inv_${s}_varios`)
-    }
-    localStorage.removeItem('historial_cargas_stock')
-    window.location.reload()
+    await borrarEquiposTodos()
+    await borrarVariosTodos()
+    await borrarHistorialCargas()
+    setEquipos([])
+    setHistorialCargas([])
   }
 
-  if (!cargado) return (
+  if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-page)' }}>
-      <p style={{ color: 'var(--text-muted)' }}>Cargando...</p>
+      <div className="text-center">
+        <div className="text-4xl mb-3">⏳</div>
+        <p style={{ color: 'var(--text-muted)', fontFamily: "'Montserrat', sans-serif", fontWeight: 700 }}>Cargando stock...</p>
+      </div>
     </div>
   )
 
@@ -277,7 +296,7 @@ export default function EquipoTecnicoPage() {
                 style={{ background: '#fff5f5', color: '#dc2626', border: '1px solid #fecaca' }}>
                 🗑️ Borrar stock
               </button>
-              <button onClick={() => imprimirStockActual(stocks, historialCargas)}
+              <button onClick={() => imprimirStockActual(equipos, historialCargas)}
                 className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl"
                 style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}>
                 🖨️ <span className="hidden sm:inline">Imprimir stock</span>
@@ -319,14 +338,9 @@ export default function EquipoTecnicoPage() {
                 const st = stocks[s.slug]
                 const arneses = st?.equipos.filter(e => e.tipo === 'arnes') ?? []
                 const poleas  = st?.equipos.filter(e => e.tipo === 'polea') ?? []
-                const cascos  = st?.equipos.filter(e => e.tipo === 'casco') ?? []
                 const totalEquipos = arneses.length + poleas.length
                 const enUso   = st?.equipos.filter(e => e.ubicacion === 'en_uso').length ?? 0
                 const reparar = st?.equipos.filter(e => e.ubicacion === 'para_reparar').length ?? 0
-                const totalCascosAcc    = st?.cascos.reduce((a, c) => a + c.enUso + c.deposito + c.reparar, 0) ?? 0
-                const totalGuantines = st?.guantines.reduce((a, g) => a + g.enUso + g.deposito + g.reparar, 0) ?? 0
-                const totalLentes    = st?.lentes.reduce((a, l) => a + l.enUso + l.deposito + l.reparar, 0) ?? 0
-                const totalCascosCombined = cascos.length + totalCascosAcc
 
                 return (
                   <div key={s.slug} className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
@@ -359,15 +373,6 @@ export default function EquipoTecnicoPage() {
                       <BarraStat label="En uso" valor={enUso} total={totalEquipos} color="#16a34a" />
                       <BarraStat label="Para reparar" valor={reparar} total={totalEquipos} color="#f97316" />
 
-                      {(totalCascosCombined + totalGuantines + totalLentes) > 0 && (
-                        <div className="pt-2 mt-1 space-y-1" style={{ borderTop: '1px solid var(--border-light)' }}>
-                          <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Accesorios</p>
-                          {totalCascosCombined > 0 && <div className="flex justify-between text-xs"><span style={{ color: 'var(--text-muted)' }}>⛑️ Cascos</span><span className="font-bold" style={{ color: 'var(--text-main)' }}>{totalCascosCombined}</span></div>}
-                          {totalGuantines > 0 && <div className="flex justify-between text-xs"><span style={{ color: 'var(--text-muted)' }}>🧤 Guantines</span><span className="font-bold" style={{ color: 'var(--text-main)' }}>{totalGuantines}</span></div>}
-                          {totalLentes > 0 && <div className="flex justify-between text-xs"><span style={{ color: 'var(--text-muted)' }}>🥽 Lentes</span><span className="font-bold" style={{ color: 'var(--text-main)' }}>{totalLentes}</span></div>}
-                        </div>
-                      )}
-
                       {totalEquipos === 0 && (
                         <p className="text-xs text-center py-2" style={{ color: 'var(--text-muted)' }}>Sin equipos cargados</p>
                       )}
@@ -382,9 +387,9 @@ export default function EquipoTecnicoPage() {
               <p className="section-label mb-2">TOTALES CONSOLIDADOS</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { label: 'Total arneses', color: '#16a34a', val: SECTORES.reduce((s, sec) => s + (stocks[sec.slug]?.equipos.filter(e => e.tipo === 'arnes').length ?? 0), 0) },
-                  { label: 'Total poleas',  color: '#2563eb', val: SECTORES.reduce((s, sec) => s + (stocks[sec.slug]?.equipos.filter(e => e.tipo === 'polea').length ?? 0), 0) },
-                  { label: 'En uso ahora', color: 'var(--c-teal)', val: SECTORES.reduce((s, sec) => s + (stocks[sec.slug]?.equipos.filter(e => e.ubicacion === 'en_uso').length ?? 0), 0) },
+                  { label: 'Total arneses', color: '#16a34a', val: equipos.filter(e => e.tipo === 'arnes').length },
+                  { label: 'Total poleas',  color: '#2563eb', val: equipos.filter(e => e.tipo === 'polea').length },
+                  { label: 'En uso ahora', color: 'var(--c-teal)', val: equipos.filter(e => e.ubicacion === 'en_uso').length },
                   { label: 'Para reparar', color: '#f97316', val: equiposReparar.length },
                 ].map(({ label, color, val }) => (
                   <div key={label} className="rounded-xl p-4 text-center" style={{ background: 'var(--bg-subtle)' }}>
@@ -465,7 +470,7 @@ export default function EquipoTecnicoPage() {
               </div>
             ) : (
               <div>
-                {[...historialCargas].reverse().map((c, i) => (
+                {historialCargas.map((c, i) => (
                   <div key={c.id} className="px-5 py-4"
                     style={{ borderBottom: i < historialCargas.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
                     <div className="flex items-start justify-between gap-3">
@@ -481,8 +486,8 @@ export default function EquipoTecnicoPage() {
                           )}
                         </div>
                         <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                          Importado por <strong>{c.cargadoPor}</strong>
-                          {c.fechaDoc && <> · Fecha doc: {c.fechaDoc}</>}
+                          Importado por <strong>{getNombreCarga(c)}</strong>
+                          {getFechaDoc(c) && <> · Fecha doc: {getFechaDoc(c)}</>}
                         </p>
                         <div className="flex gap-4 mt-2 flex-wrap">
                           <span className="text-xs font-semibold" style={{ color: '#16a34a' }}>🦺 {c.arneses} arneses</span>

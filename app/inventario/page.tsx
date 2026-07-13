@@ -6,6 +6,12 @@ import ImportarStockInicial from '@/components/ImportarStockInicial'
 import RegistrarReparacion from '@/components/RegistrarReparacion'
 import ReportePDF from '@/components/ReportePDF'
 import type { ItemVarios } from '@/components/ImportarExcelStock'
+import {
+  cargarEquiposSector, upsertEquiposSector, actualizarEquipoDb,
+  cargarVariosSector,
+  cargarGuantinesSector, upsertGuantin, eliminarGuantin,
+  cargarCascosSector, upsertCasco, eliminarCasco,
+} from '@/lib/db'
 
 type TipoEquipo = 'arnes' | 'polea' | 'casco' | 'mosqueton' | 'guantin' | 'arco'
 type Ubicacion = 'en_uso' | 'deposito' | 'para_reparar' | 'baja'
@@ -571,23 +577,15 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
 
   React.useEffect(() => {
     async function cargar() {
-      // Accesorios — localStorage (no críticos para sincronización entre dispositivos)
-      const g = localStorage.getItem(`inv_${sector}_guantines`)
+      // Lentes, bolsitas, fundas — localStorage (no tienen tabla Supabase propia)
       const l = localStorage.getItem(`inv_${sector}_lentes`)
-      const c = localStorage.getItem(`inv_${sector}_cascos`)
       const b = localStorage.getItem(`inv_${sector}_bolsitas`)
       const f = localStorage.getItem(`inv_${sector}_fundas`)
-      setGuantines(g ? JSON.parse(g) : [])
       setLentes(l ? JSON.parse(l) : [])
-      setCascos(c ? JSON.parse(c) : [])
       setBolsitas(b ? JSON.parse(b) : [])
       setFundas(f ? JSON.parse(f) : [])
 
-      // Cargar items varios del sector
-      const variosGuardados = JSON.parse(localStorage.getItem(`inv_${sector}_varios`) || '[]')
-      setItemsVarios(variosGuardados)
-
-      // Arquería: cargar accesorios específicos
+      // Arquería: accesorios específicos — localStorage
       if (sector === 'arqueria') {
         const loaded: Record<string, ModeloGuantin[]> = {}
         for (const a of ACCESORIOS_ARQ) {
@@ -597,25 +595,31 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
         setAccArq(loaded)
       }
 
-      // Equipos (arneses/poleas) — Supabase primero, localStorage como fallback
-      try {
-        const { cargarEquipos } = await import('@/lib/db')
-        const data = await cargarEquipos(sector)
-        if (data && data.length > 0) {
-          setEquipos(data as Equipo[])
-          localStorage.setItem(`inv_${sector}_equipos`, JSON.stringify(data))
-        } else {
-          const e = localStorage.getItem(`inv_${sector}_equipos`)
-          setEquipos(e ? JSON.parse(e) : [])
-        }
-      } catch {
-        const e = localStorage.getItem(`inv_${sector}_equipos`)
-        setEquipos(e ? JSON.parse(e) : [])
-      }
+      // Equipos, guantines, cascos, varios — Supabase
+      const [eqs, vars, guants, cascs] = await Promise.all([
+        cargarEquiposSector(sector),
+        cargarVariosSector(sector),
+        cargarGuantinesSector(sector),
+        cargarCascosSector(sector),
+      ])
+
+      setEquipos(eqs as Equipo[])
+      setItemsVarios((vars as Record<string, unknown>[]).map(v => ({
+        sector: v.sector as string,
+        nombre: v.nombre as string,
+        caracteristicas: (v.caracteristicas as string) || '',
+        enUso: (v.en_uso as number) ?? 0,
+        deposito: (v.deposito as number) ?? 0,
+        reparar: (v.reparar as number) ?? 0,
+        repuestos: (v.repuestos as number) ?? 0,
+      })))
+      setGuantines(guants as unknown as ModeloGuantin[])
+      setCascos(cascs as unknown as ModeloCasco[])
+
       setCargado(true)
     }
     cargar()
-  }, [])
+  }, [sector])
 
   React.useEffect(() => {
     if (!cargado || sector !== 'arqueria' || Object.keys(accArq).length === 0) return
@@ -623,17 +627,10 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
       localStorage.setItem(`inv_${sector}_${a.slug}`, JSON.stringify(accArq[a.slug] ?? []))
     }
   }, [accArq, cargado, sector])
-  React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_guantines`, JSON.stringify(guantines)) }, [guantines, cargado, sector])
+  // Lentes, bolsitas, fundas siguen en localStorage (no tienen tabla Supabase)
   React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_lentes`,    JSON.stringify(lentes))    }, [lentes,    cargado, sector])
-  React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_cascos`,    JSON.stringify(cascos))    }, [cascos,    cargado, sector])
   React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_bolsitas`,  JSON.stringify(bolsitas))  }, [bolsitas,  cargado, sector])
   React.useEffect(() => { if (cargado) localStorage.setItem(`inv_${sector}_fundas`,    JSON.stringify(fundas))    }, [fundas,    cargado, sector])
-  // Equipos: sync a Supabase cuando cambian
-  React.useEffect(() => {
-    if (!cargado || equipos.length === 0) return
-    localStorage.setItem(`inv_${sector}_equipos`, JSON.stringify(equipos))
-    import('@/lib/db').then(({ guardarEquipos }) => guardarEquipos(equipos, sector))
-  }, [equipos, cargado, sector])
 
   const equiposFiltrados = equipos.filter(e => {
     if (filtroTipo !== 'todos' && e.tipo !== filtroTipo) return false
@@ -643,7 +640,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
     return true
   })
 
-  function guardarEventoFicha() {
+  async function guardarEventoFicha() {
     if (!fichaEquipo || !formFicha.nota.trim()) return
     const por = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}').nombre || 'Usuario' } catch { return 'Usuario' } })()
     const nuevoEvento = {
@@ -657,20 +654,26 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
       ubicacion: formFicha.ubicacion,
       historial: [...(fichaEquipo.historial || []), nuevoEvento]
     }
-    const nuevosEquipos = equipos.map(e => e.id === fichaEquipo.id ? equipoActualizado : e)
-    setEquipos(nuevosEquipos)
-    localStorage.setItem(`inv_${sector}_equipos`, JSON.stringify(nuevosEquipos))
+    // Guardar en Supabase
+    await actualizarEquipoDb(fichaEquipo.id, {
+      ubicacion: formFicha.ubicacion,
+      historial: equipoActualizado.historial,
+    })
+    // Actualizar estado local
+    setEquipos(prev => prev.map(e => e.id === fichaEquipo.id ? equipoActualizado : e))
     setFichaEquipo(equipoActualizado)
     setFormFicha({ ubicacion: equipoActualizado.ubicacion as Ubicacion, nota: '' })
   }
 
-  function agregarEvento() {
+  async function agregarEvento() {
     if (!equipoSeleccionado || !formEvento.accion || !formEvento.por) return
+    const nuevoHistorial = [...equipoSeleccionado.historial, { ...formEvento }]
+    await actualizarEquipoDb(equipoSeleccionado.id, { historial: nuevoHistorial })
     setEquipos(prev => prev.map(e =>
       e.id === equipoSeleccionado.id
-        ? { ...e, historial: [...e.historial, { ...formEvento }] } : e
+        ? { ...e, historial: nuevoHistorial } : e
     ))
-    setEquipoSeleccionado(prev => prev ? { ...prev, historial: [...prev.historial, { ...formEvento }] } : null)
+    setEquipoSeleccionado(prev => prev ? { ...prev, historial: nuevoHistorial } : null)
     setFormEvento({ fecha: new Date().toISOString().split('T')[0], accion: '', por: usuarioNombre })
     setMostrarFormEvento(false)
   }
@@ -703,11 +706,11 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
     setMostrarFormNuevoLente(false)
   }
 
-  function agregarModeloGuantin() {
+  async function agregarModeloGuantin() {
     if (!formNuevoGuantin.modelo) return
     const por = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}').nombre || 'Usuario' } catch { return 'Usuario' } })()
     const nuevo: ModeloGuantin = {
-      id: Date.now().toString(),
+      id: `${sector}_guantin_${Date.now()}`,
       modelo: formNuevoGuantin.modelo,
       color: formNuevoGuantin.color,
       enUso: formNuevoGuantin.enUso,
@@ -726,16 +729,17 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
         baja: 0,
       }],
     }
+    await upsertGuantin(nuevo as unknown as Record<string, unknown>, sector)
     setGuantines(prev => [...prev, nuevo])
     setFormNuevoGuantin({ modelo: '', color: '', enUso: 0, deposito: 0, reparar: 0, nota: '' })
     setMostrarFormNuevoGuantin(false)
   }
 
-  function agregarModeloCasco() {
+  async function agregarModeloCasco() {
     if (!formNuevo.modelo) return
     const por = (() => { try { return JSON.parse(localStorage.getItem('usuario') || '{}').nombre || 'Usuario' } catch { return 'Usuario' } })()
     const nuevo: ModeloCasco = {
-      id: Date.now().toString(),
+      id: `${sector}_casco_${Date.now()}`,
       modelo: formNuevo.modelo,
       marca: formNuevo.marca,
       color: formNuevo.color,
@@ -754,6 +758,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
         baja: formNuevo.baja,
       }],
     }
+    await upsertCasco(nuevo as unknown as Record<string, unknown>, sector)
     setCascos(prev => [...prev, nuevo])
     setFormNuevo({ modelo: '', marca: '', color: '', talle: '', enUso: 0, deposito: 0, reparar: 0, baja: 0, nota: '' })
     setMostrarFormNuevo(false)
@@ -855,6 +860,15 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
   function imprimirInventario() {
     window.print()
   }
+
+  if (!cargado) return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-page)' }}>
+      <div className="text-center">
+        <div className="text-4xl mb-3">⏳</div>
+        <p style={{ color: 'var(--text-muted)', fontFamily: "'Montserrat', sans-serif", fontWeight: 700 }}>Cargando inventario...</p>
+      </div>
+    </div>
+  )
 
   if (vistaControl) {
     return (
@@ -1213,8 +1227,8 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
               }>
               {guantines.map(g => (
                 <ModuloGuantin key={g.id} guantin={g} accentColor="#c8780a" puedeEditar={puedeEditar}
-                  onUpdate={u => setGuantines(prev => prev.map(x => x.id === u.id ? u : x))}
-                  onDelete={id => setGuantines(prev => prev.filter(x => x.id !== id))} />
+                  onUpdate={async u => { await upsertGuantin(u as unknown as Record<string, unknown>, sector); setGuantines(prev => prev.map(x => x.id === u.id ? u : x)) }}
+                  onDelete={async id => { await eliminarGuantin(id); setGuantines(prev => prev.filter(x => x.id !== id)) }} />
               ))}
             </SeccionStock>
 
@@ -1296,8 +1310,8 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
               }>
               {cascos.map(c => (
                 <ModuloCasco key={c.id} casco={c} accentColor="#3a9e96" puedeEditar={puedeEditar}
-                  onUpdate={u => setCascos(prev => prev.map(x => x.id === u.id ? u : x))}
-                  onDelete={id => setCascos(prev => prev.filter(x => x.id !== id))} />
+                  onUpdate={async u => { await upsertCasco(u as unknown as Record<string, unknown>, sector); setCascos(prev => prev.map(x => x.id === u.id ? u : x)) }}
+                  onDelete={async id => { await eliminarCasco(id); setCascos(prev => prev.filter(x => x.id !== id)) }} />
               ))}
             </SeccionStock>
 

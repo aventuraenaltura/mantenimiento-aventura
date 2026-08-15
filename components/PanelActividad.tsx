@@ -98,6 +98,8 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   const [archivosAgrimensor, setArchivosAgrimensor] = useState<File[]>([])
   const [mostrarHistorial, setMostrarHistorial] = useState(false)
   const [editandoEjecucion, setEditandoEjecucion] = useState<string | null>(null)
+  const [guardando, setGuardando] = useState(false)
+  const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
   const [configCargada, setConfigCargada] = useState(false)
   const [proximasFechas, setProximasFechas] = useState<Record<string, string>>({})
   const [archivosOriginales, setArchivosOriginales] = useState<Record<string, string>>({}) // codigo -> dataURL
@@ -361,6 +363,9 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
 
   async function guardarEjecucion() {
     if (!planillaSeleccionada || !form.nombre) return
+    setGuardando(true)
+    setErrorGuardar(null)
+    try {
     const proxima = calcularProximaFecha(form.fecha, planillaSeleccionada.frecuencia)
     const carpeta = `${actividadId}/${planillaSeleccionada.codigo}`
 
@@ -446,6 +451,12 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     setForm({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', controlo: '', ingeniero: '' })
     setArchivoFirmado(null)
     setArchivosAgrimensor([])
+    } catch (err) {
+      console.error('Error al guardar:', err)
+      setErrorGuardar('Hubo un error al guardar. Revisá tu conexión y volvé a intentar.')
+    } finally {
+      setGuardando(false)
+    }
   }
 
   function borrarEjecucion(ejId: string) {
@@ -1153,10 +1164,16 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
               </div>
               )}
             </div>
+            {errorGuardar && (
+              <div className="mt-3 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-xs text-red-600">
+                ⚠️ {errorGuardar}
+              </div>
+            )}
             <button onClick={guardarEjecucion}
-              className="w-full mt-4 text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90"
+              disabled={guardando}
+              className="w-full mt-4 text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ backgroundColor: editandoEjecucion ? '#1e3a3a' : color }}>
-              {editandoEjecucion ? '💾 Guardar cambios' : 'Guardar registro'}
+              {guardando ? '⏳ Guardando...' : editandoEjecucion ? '💾 Guardar cambios' : 'Guardar registro'}
             </button>
           </div>
         )}

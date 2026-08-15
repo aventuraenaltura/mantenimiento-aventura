@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
+import { fmtFecha } from '@/lib/fecha'
 import { getFechaInicio, getProximaFechaDesdeConfig, getFechasDelMes } from '@/lib/config'
 import { cargarConfigFechas, guardarConfigFecha } from '@/lib/db'
 import type { Planilla } from '@/lib/supabase'
@@ -445,6 +446,15 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     setForm({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', controlo: '', ingeniero: '' })
     setArchivoFirmado(null)
     setArchivosAgrimensor([])
+  }
+
+  function borrarEjecucion(ejId: string) {
+    if (!window.confirm('¿Borrar este registro? Esta acción no se puede deshacer.')) return
+    setEjecuciones(prev => {
+      const nuevas = prev.filter(e => e.id !== ejId)
+      localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
+      return nuevas
+    })
   }
 
   function eliminarArchivoAgrimensor(ejId: string, idx: number) {
@@ -966,7 +976,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-semibold text-gray-800">
-                                  {new Date(ej.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                  {fmtFecha(ej.fecha)}
                                 </span>
                                 <span className="text-xs text-gray-500">— {ej.ejecutado_por}</span>
                                 {ej.controlo && <span className="text-xs text-gray-400">· Controló: {ej.controlo}</span>}
@@ -1000,16 +1010,24 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                               <div>
                                 <p className="text-xs text-gray-400">Próxima:</p>
                                 <p className="text-xs font-semibold text-gray-600">
-                                  {new Date(ej.proxima_fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                  {fmtFecha(ej.proxima_fecha)}
                                 </p>
                               </div>
                               {esAdmin && (
-                                <button
-                                  onClick={() => abrirEdicionEjecucion(ej)}
-                                  className="text-xs px-2.5 py-1 rounded-lg font-semibold"
-                                  style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>
-                                  ✏️ Editar
-                                </button>
+                                <div className="flex gap-1.5">
+                                  <button
+                                    onClick={() => abrirEdicionEjecucion(ej)}
+                                    className="text-xs px-2.5 py-1 rounded-lg font-semibold"
+                                    style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>
+                                    ✏️ Editar
+                                  </button>
+                                  <button
+                                    onClick={() => borrarEjecucion(ej.id)}
+                                    className="text-xs px-2.5 py-1 rounded-lg font-semibold"
+                                    style={{ background: '#fff1f2', color: '#dc2626', border: '1px solid #fecaca' }}>
+                                    🗑️
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1193,7 +1211,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                         <h3 className="font-semibold text-gray-800 text-sm">{p.nombre}</h3>
                         {ultimaEj && (
                           <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-                            Última: {ultimaEj.fecha} — {ultimaEj.ejecutado_por}
+                            Última: {fmtFecha(ultimaEj.fecha)} — {ultimaEj.ejecutado_por}
                             {ultimaEj.archivo_nombre && <span className="text-green-500">📎</span>}
                           </p>
                         )}

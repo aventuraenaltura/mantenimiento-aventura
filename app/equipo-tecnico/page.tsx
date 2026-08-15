@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getSesion } from '@/lib/usuarios'
+import { fmtFecha } from '@/lib/fecha'
 import ImportarExcelStock, { type EquipoImportado, type ItemVarios } from '@/components/ImportarExcelStock'
 import {
   cargarEquiposSector, upsertEquiposSector, borrarEquiposTodos,
@@ -477,7 +478,7 @@ export default function EquipoTecnicoPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 14, color: 'var(--text-main)' }}>
-                            📅 {c.fecha}
+                            📅 {fmtFecha(c.fecha)}
                           </span>
                           {i === 0 && (
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--c-teal-bg)', color: 'var(--c-teal)' }}>

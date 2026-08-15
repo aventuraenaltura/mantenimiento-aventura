@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { fmtFecha } from '@/lib/fecha'
 
 type TipoEquipo = 'arnes' | 'polea'
 type EstadoFicha = 'alta' | 'baja'
@@ -282,7 +283,7 @@ export default function FichasPage() {
                       </div>
                       {ultimoControl && (
                         <p className="text-xs text-gray-400 mt-0.5">
-                          Último ctrl: {ultimoControl.controles_stock?.fecha} · {ultimoControl.controles_stock?.realizado_por}
+                          Último ctrl: {fmtFecha(ultimoControl.controles_stock?.fecha)} · {ultimoControl.controles_stock?.realizado_por}
                         </p>
                       )}
                     </div>
@@ -413,7 +414,7 @@ export default function FichasPage() {
                         <div>
                           <span className="text-sm font-semibold text-gray-800">
                             {item.controles_stock?.fecha
-                              ? new Date(item.controles_stock.fecha).toLocaleDateString('es-AR')
+                              ? fmtFecha(item.controles_stock.fecha)
                               : '—'}
                           </span>
                           <span className="text-xs text-gray-400 ml-2">· {item.controles_stock?.realizado_por}</span>

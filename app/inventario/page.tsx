@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import ControlStock from './ControlStock'
 import ImportarStockInicial from '@/components/ImportarStockInicial'
+import { fmtFecha } from '@/lib/fecha'
 import RegistrarReparacion from '@/components/RegistrarReparacion'
 import ReportePDF from '@/components/ReportePDF'
 import type { ItemVarios } from '@/components/ImportarExcelStock'
@@ -278,7 +279,7 @@ function ModuloGuantin({ guantin, onUpdate, onDelete, accentColor = '#e8b84b', p
               {[...guantin.historial].reverse().map((r, i) => (
                 <div key={i} className="rounded-lg px-3 py-2 text-xs" style={{ background: '#f7f4ef', border: '1px solid #ece9e1' }}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold" style={{ color: '#1c2533' }}>{r.fecha}{r.por ? ` — ${r.por}` : ''}</span>
+                    <span className="font-semibold" style={{ color: '#1c2533' }}>{fmtFecha(r.fecha)}{r.por ? ` — ${r.por}` : ''}</span>
                     <span style={{ color: '#718096' }}>{r.nota}</span>
                   </div>
                   <div className="grid grid-cols-5 gap-1 mt-1">
@@ -438,7 +439,7 @@ function ModuloCasco({ casco, onUpdate, onDelete, accentColor = '#3a9e96', puede
               {[...casco.historial].reverse().map((r, i) => (
                 <div key={i} className="rounded-lg px-3 py-2 text-xs" style={{ background: '#f7f4ef', border: '1px solid #ece9e1' }}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold" style={{ color: '#1c2533' }}>{r.fecha}{r.por ? ` — ${r.por}` : ''}</span>
+                    <span className="font-semibold" style={{ color: '#1c2533' }}>{fmtFecha(r.fecha)}{r.por ? ` — ${r.por}` : ''}</span>
                     <span style={{ color: '#718096' }}>{r.nota}</span>
                   </div>
                   <div className="grid grid-cols-4 gap-1 mt-1">
@@ -1524,7 +1525,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                             <div key={i} className="pl-3 py-1.5 rounded-r-lg" style={{ borderLeft: '3px solid var(--c-teal)', background: '#f0fdfb' }}>
                               <p className="text-xs font-semibold" style={{ color: '#1c2533' }}>{h.accion}</p>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <p className="text-xs" style={{ color: '#a0aec0' }}>{h.fecha} — {h.por}</p>
+                                <p className="text-xs" style={{ color: '#a0aec0' }}>{fmtFecha(h.fecha)} — {h.por}</p>
                                 {h.ubicacion && (
                                   <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#e6f5f4', color: '#3a9e96' }}>{h.ubicacion}</span>
                                 )}
@@ -1615,7 +1616,7 @@ export default function InventarioPage({ sector = 'tirolesa' }: { sector?: strin
                       {equipoSeleccionado.historial.map((h, i) => (
                         <div key={i} className="pl-3 py-1.5 rounded-r-lg" style={{ borderLeft: '3px solid #3a9e96', background: '#f0fdfb' }}>
                           <p className="text-xs font-semibold" style={{ color: '#1c2533' }}>{h.accion}</p>
-                          <p className="text-xs mt-0.5" style={{ color: '#a0aec0' }}>{h.fecha} — {h.por}</p>
+                          <p className="text-xs mt-0.5" style={{ color: '#a0aec0' }}>{fmtFecha(h.fecha)} — {h.por}</p>
                         </div>
                       ))}
                     </div>

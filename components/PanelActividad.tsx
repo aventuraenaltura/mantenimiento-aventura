@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { supabase } from '@/lib/supabase'
 import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
 import { getFechaInicio, getProximaFechaDesdeConfig, getFechasDelMes } from '@/lib/config'
 import { cargarConfigFechas, guardarConfigFecha } from '@/lib/db'
@@ -24,7 +25,8 @@ interface Ejecucion {
   repuestos?: string
   observaciones?: string
   archivo_nombre?: string
-  archivo_data?: string
+  archivo_data?: string   // legacy base64
+  archivo_url?: string    // nuevo: URL de Supabase Storage
   archivos_agrimensor?: ArchivoAdjunto[]
 }
 
@@ -336,74 +338,113 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     })
   }
 
-  function guardarEjecucion() {
+  async function subirArchivoAStorage(file: File, carpeta: string): Promise<{ url: string; nombre: string } | null> {
+    try {
+      const ext = file.name.split('.').pop()
+      const nombreArchivo = `${carpeta}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+      const { error } = await supabase.storage
+        .from('planillas-firmadas')
+        .upload(nombreArchivo, file, { upsert: true })
+      if (error) {
+        console.error('Error subiendo archivo:', error)
+        return null
+      }
+      const { data: urlData } = supabase.storage
+        .from('planillas-firmadas')
+        .getPublicUrl(nombreArchivo)
+      return { url: urlData.publicUrl, nombre: file.name }
+    } catch (err) {
+      console.error('Error en upload:', err)
+      return null
+    }
+  }
+
+  async function guardarEjecucion() {
     if (!planillaSeleccionada || !form.nombre) return
     const proxima = calcularProximaFecha(form.fecha, planillaSeleccionada.frecuencia)
+    const carpeta = `${actividadId}/${planillaSeleccionada.codigo}`
 
-    const promesaFirmado = archivoFirmado
-      ? new Promise<{ nombre: string; data: string }>(res => {
-          const r = new FileReader()
-          r.onload = () => res({ nombre: archivoFirmado.name, data: r.result as string })
-          r.readAsDataURL(archivoFirmado)
-        })
-      : Promise.resolve(null)
-
-    Promise.all([promesaFirmado, Promise.all(archivosAgrimensor.map(leerArchivo))]).then(([firmado, agrimensores]) => {
-      if (editandoEjecucion) {
-        // Modo edición
-        setEjecuciones(prev => {
-          const nuevas = prev.map(e => {
-            if (e.id !== editandoEjecucion) return e
-            return {
-              ...e,
-              fecha: form.fecha,
-              proxima_fecha: proxima,
-              ejecutado_por: form.nombre,
-              controlo: form.controlo,
-              ingeniero: form.ingeniero,
-              tiempo_min: form.tiempo ? Number(form.tiempo) : undefined,
-              repuestos: form.repuestos,
-              observaciones: form.obs,
-              ...(firmado ? { archivo_nombre: firmado.nombre, archivo_data: firmado.data } : {}),
-              archivos_agrimensor: agrimensores.length > 0
-                ? [...(e.archivos_agrimensor ?? []), ...agrimensores]
-                : e.archivos_agrimensor,
-            }
-          })
-          localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
-          return nuevas
-        })
-        setEditandoEjecucion(null)
+    // Subir PDF firmado a Supabase Storage (en vez de base64)
+    let firmadoUrl: string | undefined
+    let firmadoNombre: string | undefined
+    if (archivoFirmado) {
+      const resultado = await subirArchivoAStorage(archivoFirmado, carpeta)
+      if (resultado) {
+        firmadoUrl = resultado.url
+        firmadoNombre = resultado.nombre
       } else {
-        // Nuevo registro
-        const nueva: Ejecucion = {
-          id: Date.now().toString(),
-          planilla_id: planillaSeleccionada.codigo,
-          fecha: form.fecha,
-          proxima_fecha: proxima,
-          ejecutado_por: form.nombre,
-          controlo: form.controlo,
-          ingeniero: form.ingeniero,
-          tiempo_min: form.tiempo ? Number(form.tiempo) : undefined,
-          repuestos: form.repuestos,
-          observaciones: form.obs,
-          archivo_nombre: firmado?.nombre,
-          archivo_data: firmado?.data,
-          archivos_agrimensor: agrimensores,
-        }
-        setEjecuciones(prev => {
-          const nuevas = [...prev, nueva]
-          localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
-          return nuevas
-        })
-        setProximasFechas(prev => ({ ...prev, [planillaSeleccionada.codigo]: proxima }))
+        // Fallback a base64 si falla el upload
+        const data = await leerArchivo(archivoFirmado)
+        firmadoUrl = data.data
+        firmadoNombre = data.nombre
       }
-      setMostrarFormulario(false)
-      setMostrarHistorial(true)
-      setForm({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', controlo: '', ingeniero: '' })
-      setArchivoFirmado(null)
-      setArchivosAgrimensor([])
-    })
+    }
+
+    // Subir archivos agrimensor
+    const agrimensoresSubidos: ArchivoAdjunto[] = []
+    for (const file of archivosAgrimensor) {
+      const resultado = await subirArchivoAStorage(file, `${carpeta}/agrimensor`)
+      if (resultado) {
+        agrimensoresSubidos.push({ nombre: resultado.nombre, data: resultado.url })
+      } else {
+        const data = await leerArchivo(file)
+        agrimensoresSubidos.push(data)
+      }
+    }
+
+    if (editandoEjecucion) {
+      setEjecuciones(prev => {
+        const nuevas = prev.map(e => {
+          if (e.id !== editandoEjecucion) return e
+          return {
+            ...e,
+            fecha: form.fecha,
+            proxima_fecha: proxima,
+            ejecutado_por: form.nombre,
+            controlo: form.controlo,
+            ingeniero: form.ingeniero,
+            tiempo_min: form.tiempo ? Number(form.tiempo) : undefined,
+            repuestos: form.repuestos,
+            observaciones: form.obs,
+            ...(firmadoUrl ? { archivo_nombre: firmadoNombre, archivo_url: firmadoUrl, archivo_data: undefined } : {}),
+            archivos_agrimensor: agrimensoresSubidos.length > 0
+              ? [...(e.archivos_agrimensor ?? []), ...agrimensoresSubidos]
+              : e.archivos_agrimensor,
+          }
+        })
+        localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
+        return nuevas
+      })
+      setEditandoEjecucion(null)
+    } else {
+      const nueva: Ejecucion = {
+        id: Date.now().toString(),
+        planilla_id: planillaSeleccionada.codigo,
+        fecha: form.fecha,
+        proxima_fecha: proxima,
+        ejecutado_por: form.nombre,
+        controlo: form.controlo,
+        ingeniero: form.ingeniero,
+        tiempo_min: form.tiempo ? Number(form.tiempo) : undefined,
+        repuestos: form.repuestos,
+        observaciones: form.obs,
+        archivo_nombre: firmadoNombre,
+        archivo_url: firmadoUrl,
+        archivos_agrimensor: agrimensoresSubidos,
+      }
+      setEjecuciones(prev => {
+        const nuevas = [...prev, nueva]
+        localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
+        return nuevas
+      })
+      setProximasFechas(prev => ({ ...prev, [planillaSeleccionada.codigo]: proxima }))
+    }
+
+    setMostrarFormulario(false)
+    setMostrarHistorial(true)
+    setForm({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', controlo: '', ingeniero: '' })
+    setArchivoFirmado(null)
+    setArchivosAgrimensor([])
   }
 
   function eliminarArchivoAgrimensor(ejId: string, idx: number) {
@@ -935,8 +976,8 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                               {ej.repuestos && <p className="text-xs text-gray-500 mt-0.5">🔩 {ej.repuestos}</p>}
                               {ej.observaciones && <p className="text-xs text-gray-600 mt-0.5 italic">"{ej.observaciones}"</p>}
                               <div className="flex gap-2 mt-1.5 flex-wrap">
-                                {ej.archivo_data && (
-                                  <a href={ej.archivo_data} download={ej.archivo_nombre || 'planilla-firmada.pdf'}
+                                {(ej.archivo_url || ej.archivo_data) && (
+                                  <a href={ej.archivo_url || ej.archivo_data} download={!ej.archivo_url ? (ej.archivo_nombre || 'planilla-firmada.pdf') : undefined} target={ej.archivo_url ? '_blank' : undefined} rel="noreferrer"
                                     className="text-xs flex items-center gap-1 text-green-600 hover:underline">
                                     📎 {ej.archivo_nombre || 'Planilla firmada'}
                                   </a>

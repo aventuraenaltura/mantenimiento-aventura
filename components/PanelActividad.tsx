@@ -344,9 +344,17 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   async function subirArchivoAStorage(file: File, carpeta: string, idx: number = 0): Promise<{ url: string; nombre: string } | null> {
     try {
       const nombreArchivo = `${carpeta}/${Date.now()}-${idx}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-      const { error } = await supabase.storage
+
+      // Timeout de 20 segundos — si Supabase no responde, usamos fallback base64
+      const uploadPromise = supabase.storage
         .from('planillas-firmadas')
         .upload(nombreArchivo, file, { upsert: true })
+
+      const timeoutPromise = new Promise<{ data: null; error: Error }>(resolve =>
+        setTimeout(() => resolve({ data: null, error: new Error('Timeout') }), 20000)
+      )
+
+      const { error } = await Promise.race([uploadPromise, timeoutPromise])
       if (error) {
         console.error('Error subiendo archivo:', error)
         return null

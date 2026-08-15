@@ -1098,6 +1098,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                   <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setArchivoFirmado(e.target.files?.[0] ?? null)} />
                 </label>
               </div>
+              {planillaSeleccionada?.codigo === 'MP01-005' && (
               <div className="col-span-2">
                 <label className="text-xs font-medium text-gray-600">Mediciones del agrimensor (PDF — podés adjuntar varios)</label>
                 <label className="mt-0.5 flex items-center gap-2 cursor-pointer border-2 border-dashed rounded-lg px-3 py-2.5 text-sm transition-colors border-blue-200 text-blue-500 hover:border-blue-400 hover:bg-blue-50">
@@ -1122,6 +1123,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                   </div>
                 )}
               </div>
+              )}
             </div>
             <button onClick={guardarEjecucion}
               className="w-full mt-4 text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90"

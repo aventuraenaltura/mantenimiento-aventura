@@ -338,10 +338,9 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     })
   }
 
-  async function subirArchivoAStorage(file: File, carpeta: string): Promise<{ url: string; nombre: string } | null> {
+  async function subirArchivoAStorage(file: File, carpeta: string, idx: number = 0): Promise<{ url: string; nombre: string } | null> {
     try {
-      const ext = file.name.split('.').pop()
-      const nombreArchivo = `${carpeta}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+      const nombreArchivo = `${carpeta}/${Date.now()}-${idx}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
       const { error } = await supabase.storage
         .from('planillas-firmadas')
         .upload(nombreArchivo, file, { upsert: true })
@@ -380,10 +379,11 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
       }
     }
 
-    // Subir archivos agrimensor
+    // Subir archivos agrimensor (con índice para garantizar nombres únicos)
     const agrimensoresSubidos: ArchivoAdjunto[] = []
-    for (const file of archivosAgrimensor) {
-      const resultado = await subirArchivoAStorage(file, `${carpeta}/agrimensor`)
+    for (let i = 0; i < archivosAgrimensor.length; i++) {
+      const file = archivosAgrimensor[i]
+      const resultado = await subirArchivoAStorage(file, `${carpeta}/agrimensor`, i)
       if (resultado) {
         agrimensoresSubidos.push({ nombre: resultado.nombre, data: resultado.url })
       } else {

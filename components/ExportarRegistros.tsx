@@ -158,18 +158,23 @@ export default function ExportarRegistros() {
         // Archivos agrimensor (solo MP01-005)
         if (ej.archivos_agrimensor?.length) {
           const subcarpeta = carpetaMes.folder('agrimensor')!
-          for (const ag of ej.archivos_agrimensor) {
+          for (let agIdx = 0; agIdx < ej.archivos_agrimensor.length; agIdx++) {
+            const ag = ej.archivos_agrimensor[agIdx]
+            const ext = ag.nombre.split('.').pop() ?? 'pdf'
+            const nombreBase = ag.nombre.replace(`.${ext}`, '')
+            // índice garantiza unicidad aunque dos archivos tengan el mismo nombre
+            const nombreZip = `${ej.fecha}-${planillaNombre}-medicion-${agIdx + 1}-${nombreBase}.${ext}`
             if (ag.data.startsWith('http')) {
               try {
                 const resp = await fetch(ag.data)
                 if (resp.ok) {
                   const buf = await resp.arrayBuffer()
-                  subcarpeta.file(`${ej.fecha}-${ag.nombre}`, buf)
+                  subcarpeta.file(nombreZip, buf)
                 }
               } catch { /* omitir */ }
             } else if (ag.data.startsWith('data:')) {
               const base64 = ag.data.split(',')[1]
-              subcarpeta.file(`${ej.fecha}-${ag.nombre}`, base64, { base64: true })
+              subcarpeta.file(nombreZip, base64, { base64: true })
             }
           }
         }

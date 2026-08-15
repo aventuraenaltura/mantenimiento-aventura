@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
+import ExportarRegistros from '@/components/ExportarRegistros'
 
 const ACTIVIDADES = [
   { slug: 'tirolesa', nombre: 'Tirolesa',          logo: '/logos/tirolesa.png',  color: '#F5C800' },
@@ -297,6 +298,7 @@ export default function HomePage() {
                 </div>
               </Link>
             )}
+            {usuario.rol === 'admin' && <ExportarRegistros />}
           </div>
 
         </div>

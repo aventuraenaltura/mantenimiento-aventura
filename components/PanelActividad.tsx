@@ -1106,9 +1106,19 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                   <span className="flex-1 text-xs">Seleccionar archivo(s) de mediciones</span>
                   <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple className="hidden"
                     onChange={e => {
-                      const files = Array.from(e.target.files ?? [])
-                      setArchivosAgrimensor(prev => [...prev, ...files])
+                      const nuevos = Array.from(e.target.files ?? [])
                       e.target.value = ''
+                      const duplicados = nuevos.filter(f =>
+                        archivosAgrimensor.some(existing => existing.name === f.name)
+                      )
+                      if (duplicados.length > 0) {
+                        const nombres = duplicados.map(f => `"${f.name}"`).join(', ')
+                        const confirmar = window.confirm(
+                          `⚠️ Ya tenés adjuntado un archivo con el mismo nombre:\n${nombres}\n\n¿Querés agregarlo igual? (podría ser una copia duplicada)`
+                        )
+                        if (!confirmar) return
+                      }
+                      setArchivosAgrimensor(prev => [...prev, ...nuevos])
                     }} />
                 </label>
                 {archivosAgrimensor.length > 0 && (

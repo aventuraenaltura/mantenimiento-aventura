@@ -84,7 +84,12 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [mostrarPDFMes, setMostrarPDFMes] = useState(false)
   const [ejecuciones, setEjecuciones] = useState<Ejecucion[]>([])
-  const [form, setForm] = useState({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', controlo: '', ingeniero: '' })
+  const [form, setForm] = useState(() => {
+    const defaults = actividadId === 'tirolesa'
+      ? { ingeniero: 'Ing. Luciano Capdevila', controlo: 'Lic. Juan Vanadía' }
+      : { ingeniero: '', controlo: '' }
+    return { fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', ...defaults }
+  })
 
   // Cargar ingeniero guardado al montar
   useEffect(() => {
@@ -455,7 +460,10 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
 
     setMostrarFormulario(false)
     setMostrarHistorial(true)
-    setForm({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', controlo: '', ingeniero: '' })
+    const defaultsCampos = actividadId === 'tirolesa'
+      ? { ingeniero: 'Ing. Luciano Capdevila', controlo: 'Lic. Juan Vanadía' }
+      : { ingeniero: '', controlo: '' }
+    setForm({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', ...defaultsCampos })
     setArchivoFirmado(null)
     setArchivosAgrimensor([])
     } catch (err) {

@@ -5,8 +5,7 @@ import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
 import { fmtFecha } from '@/lib/fecha'
 import LibroIngeniero from '@/components/LibroIngeniero'
 import { cargarEjecuciones, insertarEjecucion, actualizarEjecucion } from '@/lib/db'
-import { getFechaInicio, getProximaFechaDesdeConfig, getFechasDelMes } from '@/lib/config'
-import { cargarConfigFechas, guardarConfigFecha } from '@/lib/db'
+import { getFechasDelMes } from '@/lib/config'
 import type { Planilla } from '@/lib/supabase'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -95,21 +94,13 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     return { fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', ...defaults }
   })
 
-  // Cargar ingeniero guardado al montar
-  useEffect(() => {
-    cargarConfigFechas().then(config => {
-      if (config?.['ingeniero_cargo']) {
-        setForm(f => ({ ...f, ingeniero: config['ingeniero_cargo'] }))
-      }
-    })
-  }, [])
+
   const [archivoFirmado, setArchivoFirmado] = useState<File | null>(null)
   const [archivosAgrimensor, setArchivosAgrimensor] = useState<File[]>([])
   const [mostrarHistorial, setMostrarHistorial] = useState(false)
   const [editandoEjecucion, setEditandoEjecucion] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
-  const [configCargada, setConfigCargada] = useState(false)
   const [proximasFechas, setProximasFechas] = useState<Record<string, string>>({})
   const [archivosOriginales, setArchivosOriginales] = useState<Record<string, string>>({}) // codigo -> dataURL
   const [mostrarAdjuntarOriginal, setMostrarAdjuntarOriginal] = useState(false)
@@ -118,31 +109,21 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   const [tutoriales, setTutoriales] = useState<Record<string, { tipo: 'url' | 'file'; valor: string }>>({})
   const [configTutorialAbierto, setConfigTutorialAbierto] = useState<string | null>(null)
   const [tutorialViendose, setTutorialViendose] = useState<string | null>(null)
+  const [tabConfig, setTabConfig] = useState<'planilla' | 'tutorial' | 'notas'>('planilla')
   const [formTutorial, setFormTutorial] = useState<{ tipo: 'url' | 'file'; valor: string; urlInput: string }>({ tipo: 'url', valor: '', urlInput: '' })
   const [esAdmin, setEsAdmin] = useState(false)
   const [toastTutorial, setToastTutorial] = useState<string | null>(null)
   const [planillaParaImprimir, setPlanillaParaImprimir] = useState<Planilla | null>(null)
   const [edicionesPlanillas, setEdicionesPlanillas] = useState<Record<string, Partial<Planilla>>>({})
   const [formEdicion, setFormEdicion] = useState<{ nombre: string; descripcion: string; frecuencia: string; tareas: string; materiales: string; instructivo: string } | null>(null)
-  const [tabConfig, setTabConfig] = useState<'planilla' | 'tutorial' | 'notas'>('planilla')
 
   // Aplicar ediciones guardadas sobre los datos base
   const planillas = planillasBase.map(p => ({ ...p, ...edicionesPlanillas[p.codigo] }))
 
   const hoy = new Date()
 
-  // Cargar config y archivos originales desde localStorage (client-only)
+  // Cargar datos desde localStorage y Supabase (client-only)
   useEffect(() => {
-    const fechas: Record<string, string> = {}
-    planillas.forEach(p => {
-      const inicio = getFechaInicio(p.codigo)
-      if (inicio) {
-        fechas[p.codigo] = getProximaFechaDesdeConfig(inicio, p.frecuencia)
-      }
-    })
-    setProximasFechas(fechas)
-    setConfigCargada(true)
-
     // Cargar ejecuciones desde Supabase (sync entre dispositivos)
     cargarEjecuciones(actividadId).then(data => {
       if (data && data.length > 0) {
@@ -272,7 +253,6 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     const p = planillas.find(x => x.codigo === codigo)
     if (p) abrirEdicionPlanilla(p)
     setTabConfig('planilla')
-    setConfigTutorialAbierto(codigo)
   }
 
   function guardarFormTutorial(codigo: string) {
@@ -281,7 +261,6 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     } else if (formTutorial.tipo === 'file' && formTutorial.valor) {
       guardarTutorial(codigo, { tipo: 'file', valor: formTutorial.valor })
     }
-    setConfigTutorialAbierto(null)
   }
 
   function cargarArchivoTutorial(file: File) {
@@ -334,17 +313,10 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     const anio = hoy.getFullYear()
     const resultado: { planilla: Planilla; fechas: string[] }[] = []
     planillas.forEach(p => {
-      const inicio = getFechaInicio(p.codigo)
-      if (inicio) {
-        const fechas = getFechasDelMes(inicio, p.frecuencia, anio, mes)
-        if (fechas.length > 0) resultado.push({ planilla: p, fechas })
-      } else {
-        // Sin config, igual aparece con fecha próxima estimada
-        const proxima = getProximaFecha(p)
-        const d = new Date(proxima)
-        if (d.getMonth() === mes && d.getFullYear() === anio) {
-          resultado.push({ planilla: p, fechas: [proxima] })
-        }
+      const proxima = getProximaFecha(p)
+      const d = new Date(proxima)
+      if (d.getMonth() === mes && d.getFullYear() === anio) {
+        resultado.push({ planilla: p, fechas: [proxima] })
       }
     })
     return resultado
@@ -526,51 +498,39 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
 
   // Días del mes con planillas — cada entrada guarda lista de { codigo, color, estado }
   const diasConPlanilla: Record<number, { codigo: string; nombre: string; color: string; estado: 'realizada' | 'para_realizar' | 'vencida' }[]> = {}
-  if (configCargada) {
-    planillas.forEach(p => {
-      const inicio = getFechaInicio(p.codigo)
-      let fechas: string[] = []
-      if (inicio) {
-        fechas = getFechasDelMes(inicio, p.frecuencia, hoy.getFullYear(), hoy.getMonth())
-      } else {
-        // Recalcular próxima fecha desde la última ejecución + frecuencia actual
-        const ultimaEj = ejecuciones
-          .filter(e => e.planilla_id === p.codigo)
-          .sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
+  planillas.forEach(p => {
+    const ultimaEj = ejecuciones
+      .filter(e => e.planilla_id === p.codigo)
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
 
-        let proximaReal: string
-        if (ultimaEj) {
-          // Recalcular desde la fecha real del último registro con la frecuencia actual
-          proximaReal = calcularProximaFecha(ultimaEj.fecha, p.frecuencia)
-        } else {
-          proximaReal = getProximaFecha(p)
-        }
+    let proximaReal: string
+    if (ultimaEj) {
+      proximaReal = calcularProximaFecha(ultimaEj.fecha, p.frecuencia)
+    } else {
+      proximaReal = getProximaFecha(p)
+    }
 
-        const d = new Date(proximaReal)
-        const mesActualIdx = hoy.getMonth()
-        const anioActual = hoy.getFullYear()
+    const d = new Date(proximaReal)
+    const mesActualIdx = hoy.getMonth()
+    const anioActual = hoy.getFullYear()
+    let fechas: string[] = []
 
-        if (d.getMonth() === mesActualIdx && d.getFullYear() === anioActual) {
-          // Cae en este mes
-          fechas = [proximaReal]
-        } else if (d < hoy) {
-          // Está vencida (fecha pasada) — mostrarla igual en el día 1 del mes como vencida
-          fechas = [`${anioActual}-${String(mesActualIdx + 1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`]
-          // Si el día no existe en este mes, usar el último día del mes
-          const ultimoDiaMes = new Date(anioActual, mesActualIdx + 1, 0).getDate()
-          const dia = Math.min(d.getDate(), ultimoDiaMes)
-          fechas = [`${anioActual}-${String(mesActualIdx + 1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`]
-        }
-      }
-      fechas.forEach(f => {
-        const dia = new Date(f).getDate()
-        const est = estadoMes(p, [f])
-        const col = est === 'realizada' ? '#16a34a' : est === 'vencida' ? '#dc2626' : '#f59e0b'
-        if (!diasConPlanilla[dia]) diasConPlanilla[dia] = []
-        diasConPlanilla[dia].push({ codigo: p.codigo, nombre: p.nombre, color: col, estado: est })
-      })
+    if (d.getMonth() === mesActualIdx && d.getFullYear() === anioActual) {
+      fechas = [proximaReal]
+    } else if (d < hoy) {
+      const ultimoDiaMes = new Date(anioActual, mesActualIdx + 1, 0).getDate()
+      const dia = Math.min(d.getDate(), ultimoDiaMes)
+      fechas = [`${anioActual}-${String(mesActualIdx + 1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`]
+    }
+
+    fechas.forEach(f => {
+      const dia = new Date(f).getDate()
+      const est = estadoMes(p, [f])
+      const col = est === 'realizada' ? '#16a34a' : est === 'vencida' ? '#dc2626' : '#f59e0b'
+      if (!diasConPlanilla[dia]) diasConPlanilla[dia] = []
+      diasConPlanilla[dia].push({ codigo: p.codigo, nombre: p.nombre, color: col, estado: est })
     })
-  }
+  })
 
   const diasDelMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate()
   const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).getDay()
@@ -1147,11 +1107,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
               </div>
               <div className="col-span-2">
                 <label className="text-xs font-medium text-gray-600">Ingeniero a cargo</label>
-                <input type="text" value={form.ingeniero} onChange={e => {
-                    const v = e.target.value
-                    setForm(f => ({...f, ingeniero: v}))
-                    guardarConfigFecha('ingeniero_cargo', v)
-                  }}
+                <input type="text" value={form.ingeniero} onChange={e => setForm(f => ({...f, ingeniero: e.target.value}))}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-0.5" placeholder="Nombre del ingeniero responsable" />
               </div>
               <div className="col-span-2">
@@ -1235,16 +1191,14 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
         {/* SECCIÓN INFERIOR: todas las planillas */}
         <div>
           {/* Overlay para cerrar paneles flotantes al hacer click afuera */}
-          {(extrasAbierto || configTutorialAbierto) && (
-            <div className="fixed inset-0 z-40" onClick={() => { setExtrasAbierto(null); setConfigTutorialAbierto(null) }} />
+          {extrasAbierto && (
+            <div className="fixed inset-0 z-40" onClick={() => { setExtrasAbierto(null) }} />
           )}
           <h2 className="font-bold text-gray-700 mb-3">Todas las planillas</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {planillas.map(p => {
               const proxima = getProximaFecha(p)
               const ultimaEj = ejecuciones.filter(e => e.planilla_id === p.codigo).sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
-              const tieneConfig = !!getFechaInicio(p.codigo)
-
               // Usar la misma lógica que el panel del mes si la planilla tiene fechas este mes
               const planillaMes = planillasMes.find(pm => pm.planilla.codigo === p.codigo)
               let badgeText: string
@@ -1276,7 +1230,6 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                         <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                           <span className="text-xs font-mono bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{p.codigo}</span>
                           <span className="text-xs text-gray-400">{FREC_LABEL[p.frecuencia]}</span>
-                          {!tieneConfig && <span className="text-xs text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">⚙️ Sin fecha</span>}
                           {tieneAnotacion && <span className="text-xs text-purple-500 bg-purple-50 px-1.5 py-0.5 rounded">📝</span>}
                         </div>
                         <h3 className="font-semibold text-gray-800 text-sm">{p.nombre}</h3>
@@ -1335,7 +1288,6 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                         onClick={e => {
                           e.stopPropagation()
                           setExtrasAbierto(extrasAbierto === p.codigo ? null : p.codigo)
-                          setConfigTutorialAbierto(null)
                         }}
                         className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg font-medium"
                         style={extrasAbierto === p.codigo
@@ -1345,7 +1297,6 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                         📝 Extras
                       </button>
 
-                      {/* ⚙️ Config — solo admin: edita tutorial + extras juntos */}
                       {esAdmin && (
                         <button
                           onClick={e => {

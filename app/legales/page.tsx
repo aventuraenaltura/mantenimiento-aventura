@@ -299,7 +299,7 @@ export default function LegalesPage() {
                     {estaSubiendo ? 'Subiendo...' : sec.multiple ? 'Agregar archivo' : archivos.length === 0 ? 'Subir archivo' : 'Reemplazar archivo'}
                   </span>
                   <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
-                    disabled={estaSubiendo !== null}
+                    disabled={estaSubiendo}
                     onChange={e => {
                       const file = e.target.files?.[0]
                       if (file) subirArchivo(sec.id, file)
@@ -317,7 +317,7 @@ export default function LegalesPage() {
                     {estaSubiendo ? 'Subiendo...' : 'Reemplazar con versión actualizada'}
                   </span>
                   <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
-                    disabled={estaSubiendo !== null}
+                    disabled={estaSubiendo}
                     onChange={e => {
                       const file = e.target.files?.[0]
                       if (file) subirArchivo(sec.id, file)

@@ -2,40 +2,98 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
+import { fmtFecha } from '@/lib/fecha'
 
-interface DocLegal {
+interface Archivo {
   id: string
   nombre: string
-  descripcion: string
-  categoria: 'habilitacion' | 'ingenieria' | 'seguro' | 'otro'
-  archivo_url: string
+  url: string
   fecha_carga: string
   fecha_vencimiento?: string
 }
 
-const CATEGORIAS = [
-  { id: 'habilitacion', label: 'Habilitación Municipal', icono: '🏛️', color: 'bg-blue-50 border-blue-200' },
-  { id: 'ingenieria',   label: 'Ingeniería',             icono: '📐', color: 'bg-purple-50 border-purple-200' },
-  { id: 'seguro',       label: 'Seguros',                icono: '🛡️', color: 'bg-green-50 border-green-200' },
-  { id: 'otro',         label: 'Otros',                  icono: '📁', color: 'bg-gray-50 border-gray-200' },
+interface SeccionDoc {
+  id: string
+  label: string
+  icono: string
+  descripcion: string
+  tieneVencimiento: boolean
+  multiple: boolean   // permite varios archivos
+}
+
+const SECCIONES: SeccionDoc[] = [
+  {
+    id: 'habilitacion_municipal',
+    label: 'Habilitación Municipal',
+    icono: '🏛️',
+    descripcion: 'Habilitación otorgada por la Municipalidad de Villa Carlos Paz',
+    tieneVencimiento: true,
+    multiple: false,
+  },
+  {
+    id: 'poliza_rc',
+    label: 'Póliza de Responsabilidad Civil',
+    icono: '🛡️',
+    descripcion: 'Póliza de seguro de responsabilidad civil actualizada',
+    tieneVencimiento: true,
+    multiple: false,
+  },
+  {
+    id: 'poliza_comercio',
+    label: 'Póliza Integral de Comercio',
+    icono: '🏢',
+    descripcion: 'Póliza integral de comercio actualizada',
+    tieneVencimiento: true,
+    multiple: false,
+  },
+  {
+    id: 'planillas_blanco',
+    label: 'Planillas Obras Privadas (en blanco)',
+    icono: '📋',
+    descripcion: 'Planillas en blanco para descargar y completar',
+    tieneVencimiento: false,
+    multiple: true,
+  },
+  {
+    id: 'planillas_presentadas',
+    label: 'Planillas Obras Privadas (presentadas)',
+    icono: '📁',
+    descripcion: 'Planillas presentadas y actualizadas ante Obras Privadas',
+    tieneVencimiento: false,
+    multiple: true,
+  },
+  {
+    id: 'credencial_turismo',
+    label: 'Credencial Turismo Alternativo',
+    icono: '🏔️',
+    descripcion: 'Credencial de prestador de turismo alternativo — Provincia de Córdoba',
+    tieneVencimiento: true,
+    multiple: false,
+  },
 ]
 
-const DOCS_DEMO: DocLegal[] = [
-  { id: '1', nombre: 'Habilitación Municipal 2026', descripcion: 'Habilitación anual otorgada por la Municipalidad de Villa Carlos Paz', categoria: 'habilitacion', archivo_url: '#', fecha_carga: '2026-01-10', fecha_vencimiento: '2026-12-31' },
-  { id: '2', nombre: 'Certificado estructural tirolesa — Ing. Responsable', descripcion: 'Certificado de aptitud estructural del sistema de tirolesa firmado por el ingeniero responsable', categoria: 'ingenieria', archivo_url: '#', fecha_carga: '2025-11-01', fecha_vencimiento: '2026-11-01' },
-  { id: '3', nombre: 'Papelería para registro municipal — Parque Aéreo', descripcion: 'Documentación del ingeniero para el registro del Parque Aéreo ante la municipalidad', categoria: 'ingenieria', archivo_url: '#', fecha_carga: '2025-10-15' },
-  { id: '4', nombre: 'Póliza de seguro de responsabilidad civil 2026', descripcion: 'Seguro de responsabilidad civil por actividades de riesgo', categoria: 'seguro', archivo_url: '#', fecha_carga: '2026-01-01', fecha_vencimiento: '2026-12-31' },
-]
+const STORAGE_KEY = 'legales_docs_v2'
 
-function diasHastaVencimiento(fecha?: string): number | null {
+function diasHasta(fecha?: string): number | null {
   if (!fecha) return null
   return Math.ceil((new Date(fecha).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+}
+
+function estadoVencimiento(dias: number | null): 'vencido' | 'proximo' | 'ok' | null {
+  if (dias === null) return null
+  if (dias < 0) return 'vencido'
+  if (dias <= 60) return 'proximo'
+  return 'ok'
 }
 
 export default function LegalesPage() {
   const router = useRouter()
   const [autorizado, setAutorizado] = useState(false)
-  const [categoriaActiva, setCategoriaActiva] = useState('todos')
+  const [docs, setDocs] = useState<Record<string, Archivo[]>>({})
+  const [subiendo, setSubiendo] = useState<string | null>(null)
+  const [editandoVenc, setEditandoVenc] = useState<{ secId: string; archivoId: string; valor: string } | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const u = localStorage.getItem('usuario')
@@ -43,117 +101,233 @@ export default function LegalesPage() {
     const usuario = JSON.parse(u)
     if (usuario.rol !== 'admin') { router.push('/home'); return }
     setAutorizado(true)
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) setDocs(JSON.parse(raw))
+    } catch { /* skip */ }
   }, [router])
+
+  function guardarDocs(nuevos: Record<string, Archivo[]>) {
+    setDocs(nuevos)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nuevos))
+  }
+
+  async function subirArchivo(seccionId: string, file: File, vencimiento?: string) {
+    setSubiendo(seccionId)
+    setError(null)
+    try {
+      const path = `legales/${seccionId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+      const uploadPromise = supabase.storage.from('planillas-firmadas').upload(path, file, { upsert: true })
+      const timeout = new Promise<{ data: null; error: Error }>(res =>
+        setTimeout(() => res({ data: null, error: new Error('Timeout') }), 20000)
+      )
+      const { error: uploadError } = await Promise.race([uploadPromise, timeout])
+      if (uploadError) { setError('No se pudo subir el archivo. Revisá tu conexión.'); return }
+
+      const { data: urlData } = supabase.storage.from('planillas-firmadas').getPublicUrl(path)
+      const nuevo: Archivo = {
+        id: Date.now().toString(),
+        nombre: file.name,
+        url: urlData.publicUrl,
+        fecha_carga: new Date().toISOString().split('T')[0],
+        fecha_vencimiento: vencimiento || undefined,
+      }
+
+      const sec = SECCIONES.find(s => s.id === seccionId)!
+      const actuales = docs[seccionId] ?? []
+      // Si no es múltiple, reemplazá el existente
+      const nuevosArchivos = sec.multiple ? [...actuales, nuevo] : [nuevo]
+      guardarDocs({ ...docs, [seccionId]: nuevosArchivos })
+    } catch {
+      setError('Error al subir el archivo.')
+    } finally {
+      setSubiendo(null)
+    }
+  }
+
+  function borrarArchivo(seccionId: string, archivoId: string) {
+    if (!window.confirm('¿Borrar este archivo?')) return
+    const actuales = docs[seccionId] ?? []
+    guardarDocs({ ...docs, [seccionId]: actuales.filter(a => a.id !== archivoId) })
+  }
+
+  function guardarVencimiento() {
+    if (!editandoVenc) return
+    const { secId, archivoId, valor } = editandoVenc
+    const actuales = docs[secId] ?? []
+    guardarDocs({
+      ...docs,
+      [secId]: actuales.map(a => a.id === archivoId ? { ...a, fecha_vencimiento: valor || undefined } : a),
+    })
+    setEditandoVenc(null)
+  }
 
   if (!autorizado) return null
 
-  const docsFiltrados = DOCS_DEMO.filter(d => categoriaActiva === 'todos' || d.categoria === categoriaActiva)
+  // Alertas de vencimiento
+  const alertas: { sec: SeccionDoc; archivo: Archivo; dias: number }[] = []
+  for (const sec of SECCIONES.filter(s => s.tieneVencimiento)) {
+    for (const arch of docs[sec.id] ?? []) {
+      const dias = diasHasta(arch.fecha_vencimiento)
+      if (dias !== null && dias <= 60) {
+        alertas.push({ sec, archivo: arch, dias })
+      }
+    }
+  }
 
   return (
-    <div className="min-h-screen">
-      <header className="bg-slate-800 text-white px-6 py-4 flex items-center gap-4 no-print">
+    <div className="min-h-screen" style={{ background: '#f7f5f0' }}>
+      <header style={{ background: '#1e3a3a', color: 'white' }} className="px-6 py-4 flex items-center gap-4">
         <Link href="/home" className="text-white opacity-70 hover:opacity-100 text-2xl">←</Link>
         <span className="text-3xl">🏛️</span>
         <div>
-          <h1 className="font-bold text-xl">Documentos Legales y Municipales</h1>
-          <p className="text-sm opacity-70">Acceso exclusivo — Administrador</p>
+          <h1 style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 20 }}>
+            Documentos Legales
+          </h1>
+          <p className="text-sm opacity-70">Ptatanka SRL · Aventura en Altura</p>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Alertas de vencimiento */}
-        {DOCS_DEMO.filter(d => {
-          const dias = diasHastaVencimiento(d.fecha_vencimiento)
-          return dias !== null && dias <= 30 && dias >= 0
-        }).map(d => (
-          <div key={d.id} className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4 flex items-center gap-3">
-            <span className="text-2xl">⏰</span>
-            <div>
-              <p className="font-semibold text-orange-800 text-sm">{d.nombre}</p>
-              <p className="text-xs text-orange-600">Vence en {diasHastaVencimiento(d.fecha_vencimiento)} días — {d.fecha_vencimiento}</p>
-            </div>
-            <button onClick={() => window.print()} className="ml-auto text-xs bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 no-print">
-              🖨️ Imprimir
-            </button>
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+
+        {/* Alertas */}
+        {alertas.length > 0 && (
+          <div className="space-y-2">
+            {alertas.map(({ sec, archivo, dias }) => (
+              <div key={archivo.id}
+                className="rounded-xl p-4 flex items-center gap-3"
+                style={{ background: dias < 0 ? '#fef2f2' : '#fff7ed', border: `1px solid ${dias < 0 ? '#fecaca' : '#fed7aa'}` }}>
+                <span className="text-2xl">{dias < 0 ? '🔴' : '⚠️'}</span>
+                <div className="flex-1">
+                  <p style={{ fontWeight: 700, fontSize: 13, color: dias < 0 ? '#dc2626' : '#c2410c' }}>
+                    {dias < 0 ? 'VENCIDO' : `Vence en ${dias} días`} — {sec.label}
+                  </p>
+                  <p style={{ fontSize: 11, color: '#6b7280' }}>
+                    {archivo.nombre} · {fmtFecha(archivo.fecha_vencimiento)}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
 
-        {/* Filtros */}
-        <div className="flex gap-2 flex-wrap mb-6">
-          <button onClick={() => setCategoriaActiva('todos')}
-            className={`text-sm px-4 py-2 rounded-xl border transition-colors ${categoriaActiva === 'todos' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
-            Todos
-          </button>
-          {CATEGORIAS.map(cat => (
-            <button key={cat.id} onClick={() => setCategoriaActiva(cat.id)}
-              className={`text-sm px-4 py-2 rounded-xl border transition-colors flex items-center gap-1.5 ${categoriaActiva === cat.id ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
-              {cat.icono} {cat.label}
-            </button>
-          ))}
-        </div>
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600">⚠️ {error}</div>
+        )}
 
-        {/* Documentos */}
-        <div className="space-y-4">
-          {CATEGORIAS.map(cat => {
-            const docs = docsFiltrados.filter(d => d.categoria === cat.id)
-            if (docs.length === 0) return null
-            if (categoriaActiva !== 'todos' && categoriaActiva !== cat.id) return null
-            return (
-              <div key={cat.id}>
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  {cat.icono} {cat.label}
-                </h2>
-                <div className="space-y-3">
-                  {docs.map(doc => {
-                    const dias = diasHastaVencimiento(doc.fecha_vencimiento)
+        {/* Secciones */}
+        {SECCIONES.map(sec => {
+          const archivos = docs[sec.id] ?? []
+          const estaSubiendo = subiendo === sec.id
+
+          return (
+            <div key={sec.id} className="bg-white rounded-2xl p-5 shadow-sm"
+              style={{ border: '1px solid #e5e7eb' }}>
+
+              <div className="flex items-start gap-3 mb-4">
+                <span className="text-2xl mt-0.5">{sec.icono}</span>
+                <div className="flex-1">
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 14, color: '#1c2533' }}>
+                    {sec.label}
+                  </p>
+                  <p style={{ fontSize: 11, color: '#a0aec0' }}>{sec.descripcion}</p>
+                </div>
+              </div>
+
+              {/* Archivos cargados */}
+              {archivos.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {archivos.map(arch => {
+                    const dias = diasHasta(arch.fecha_vencimiento)
+                    const estado = estadoVencimiento(dias)
                     return (
-                      <div key={doc.id} className={`bg-white rounded-xl border p-4 flex items-start gap-4 hover:shadow-sm transition-shadow ${cat.color}`}>
-                        <span className="text-3xl mt-0.5">📄</span>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-800">{doc.nombre}</h3>
-                          <p className="text-xs text-gray-500 mt-0.5">{doc.descripcion}</p>
-                          <div className="flex items-center gap-3 mt-2">
-                            <span className="text-xs text-gray-400">Cargado: {doc.fecha_carga}</span>
-                            {doc.fecha_vencimiento && (
-                              <span className={`text-xs px-2 py-0.5 rounded-lg ${
-                                dias !== null && dias <= 30
-                                  ? 'bg-orange-100 text-orange-700'
-                                  : dias !== null && dias < 0
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-gray-100 text-gray-500'
-                              }`}>
-                                Vence: {doc.fecha_vencimiento} {dias !== null && dias >= 0 && dias <= 30 ? `(${dias}d)` : ''}
-                              </span>
-                            )}
-                          </div>
+                      <div key={arch.id} className="rounded-xl p-3 flex items-start gap-3"
+                        style={{ background: '#f7f5f0', border: '1px solid #e5e7eb' }}>
+                        <span className="text-lg mt-0.5">
+                          {arch.nombre.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? '🖼️' : '📄'}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <a href={arch.url} target="_blank" rel="noreferrer"
+                            className="text-sm font-semibold text-blue-600 hover:underline truncate block">
+                            {arch.nombre}
+                          </a>
+                          <p style={{ fontSize: 11, color: '#a0aec0' }}>Cargado: {fmtFecha(arch.fecha_carga)}</p>
+
+                          {/* Vencimiento */}
+                          {sec.tieneVencimiento && (
+                            editandoVenc?.secId === sec.id && editandoVenc?.archivoId === arch.id ? (
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <input type="date" value={editandoVenc.valor}
+                                  onChange={e => setEditandoVenc(ev => ev ? { ...ev, valor: e.target.value } : null)}
+                                  className="border rounded-lg px-2 py-1 text-xs focus:outline-none"
+                                  style={{ border: '1px solid #d1d5db' }} />
+                                <button onClick={guardarVencimiento}
+                                  className="text-xs px-2 py-1 rounded-lg text-white" style={{ background: '#1e3a3a' }}>
+                                  Guardar
+                                </button>
+                                <button onClick={() => setEditandoVenc(null)} className="text-xs text-gray-400">✕</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setEditandoVenc({ secId: sec.id, archivoId: arch.id, valor: arch.fecha_vencimiento ?? '' })}
+                                className="mt-1 text-xs flex items-center gap-1">
+                                <span className={`px-2 py-0.5 rounded-lg font-medium ${
+                                  estado === 'vencido' ? 'bg-red-100 text-red-600' :
+                                  estado === 'proximo' ? 'bg-orange-100 text-orange-600' :
+                                  estado === 'ok' ? 'bg-green-100 text-green-700' :
+                                  'bg-gray-100 text-gray-500'
+                                }`}>
+                                  {arch.fecha_vencimiento ? `Vence: ${fmtFecha(arch.fecha_vencimiento)}${dias !== null && dias >= 0 ? ` (${dias}d)` : ' — VENCIDO'}` : '+ Agregar vencimiento'}
+                                </span>
+                              </button>
+                            )
+                          )}
                         </div>
-                        <div className="flex gap-2 no-print">
-                          <button className="text-xs bg-slate-100 text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-200">Ver</button>
-                          <button onClick={() => window.print()} className="text-xs bg-slate-800 text-white px-3 py-2 rounded-lg hover:bg-slate-700">🖨️ Imprimir</button>
-                        </div>
+                        <button onClick={() => borrarArchivo(sec.id, arch.id)}
+                          className="text-red-400 hover:text-red-600 text-sm flex-shrink-0">🗑️</button>
                       </div>
                     )
                   })}
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )}
 
-        {/* Subir */}
-        <div className="mt-8 border-2 border-dashed border-gray-200 rounded-xl p-8 text-center no-print">
-          <span className="text-3xl">⬆️</span>
-          <p className="text-sm font-medium text-gray-600 mt-2">Subir documento legal</p>
-          <p className="text-xs text-gray-400 mt-1">Habilitaciones, certificados, seguros, papelería del ingeniero</p>
-          <div className="flex gap-3 justify-center mt-4">
-            <select className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none">
-              {CATEGORIAS.map(c => <option key={c.id} value={c.id}>{c.icono} {c.label}</option>)}
-            </select>
-            <button className="bg-slate-800 text-white text-sm px-6 py-2 rounded-xl hover:bg-slate-700">
-              Seleccionar archivo
-            </button>
-          </div>
-        </div>
+              {/* Subir */}
+              {(sec.multiple || archivos.length === 0) && (
+                <label className="flex items-center gap-2 cursor-pointer border-2 border-dashed rounded-xl px-3 py-3 transition-colors"
+                  style={{ borderColor: estaSubiendo ? '#9ca3af' : '#d1d5db' }}>
+                  <span>{estaSubiendo ? '⏳' : '⬆️'}</span>
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>
+                    {estaSubiendo ? 'Subiendo...' : sec.multiple ? 'Agregar archivo' : archivos.length === 0 ? 'Subir archivo' : 'Reemplazar archivo'}
+                  </span>
+                  <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
+                    disabled={estaSubiendo !== null}
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) subirArchivo(sec.id, file)
+                      e.target.value = ''
+                    }} />
+                </label>
+              )}
+
+              {/* Reemplazar si no es múltiple y ya tiene archivo */}
+              {!sec.multiple && archivos.length > 0 && (
+                <label className="flex items-center gap-2 cursor-pointer mt-2"
+                  style={{ fontSize: 12, color: '#6b7280' }}>
+                  <span>{estaSubiendo ? '⏳' : '🔄'}</span>
+                  <span className="underline cursor-pointer">
+                    {estaSubiendo ? 'Subiendo...' : 'Reemplazar con versión actualizada'}
+                  </span>
+                  <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
+                    disabled={estaSubiendo !== null}
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) subirArchivo(sec.id, file)
+                      e.target.value = ''
+                    }} />
+                </label>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

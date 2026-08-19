@@ -8,11 +8,11 @@ export const ACTIVIDADES = [
 
 export const PLANILLAS_INICIALES = [
   // TIROLESA
-  { codigo: 'MP00-001', nombre: 'Apertura de Parque', actividad_id: 'tirolesa', frecuencia: 'diaria',
-    descripcion: 'Revisión diaria de senderos, limpieza general y control de matafuegos antes de abrir.',
-    tareas: ['Verificar estado de senderos: compactación, piedras sueltas, escalones', 'Controlar crecimiento de arbustos en senderos', 'Poda selectiva en senderos', 'Limpieza general del parque incluyendo zona Arquería y Salón', 'Control de matafuegos (fecha de vencimiento de carga)'],
-    materiales: ['Herramientas de poda', 'Elementos de limpieza'],
-    instructivo: 'Recorrer todos los senderos controlando el estado del terreno. Señalar lugares con falta de compactación. Controlar y eliminar o calzar piedras sueltas. Verificar que los escalones estén firmes. Podar arbustos que entorpezcan el tránsito. Controlar fechas de vencimiento de matafuegos.' },
+  { codigo: 'MP00-001', nombre: 'Apertura de Parque', actividad_id: 'tirolesa', frecuencia: 'mensual',
+    descripcion: 'Control mensual de senderos, limpieza general y matafuegos. Firmar planilla diariamente detrás de la puerta de la oficina Tirolesa.',
+    tareas: ['Verificar estado de senderos: compactación, piedras sueltas, escalones', 'Controlar crecimiento de arbustos en senderos en épocas de alto crecimiento (estival)', 'Poda selectiva en senderos', 'Limpieza general del parque incluyendo zona Arquería y Salón', 'Control de matafuegos (fecha de vencimiento de carga)'],
+    materiales: ['EPP: Casco, guantes, lentes, arnés', 'Herramientas de poda', 'Elementos de limpieza'],
+    instructivo: 'Recorrer todos los senderos controlando el estado del terreno. Señalar lugares con falta de compactación que comprometan el tránsito de pasajeros. Controlar y eliminar o calzar piedras sueltas. Verificar que los escalones estén firmes. Podar arbustos y plantas que entorpezcan el tránsito sin destruir la flora plantada. Controlar fechas de vencimiento de la carga de matafuegos. FIRMAR LA PLANILLA DIARIAMENTE DETRÁS DE LA PUERTA DE LA OFICINA TIROLESA.' },
 
   { codigo: 'MP01-001', nombre: 'Bases de Anclaje y Cables', actividad_id: 'tirolesa', frecuencia: 'mensual',
     descripcion: 'Verificación mensual del estado de las bases de anclaje de los cables de tirolesa.',

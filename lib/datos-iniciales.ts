@@ -27,7 +27,7 @@ export const PLANILLAS_INICIALES = [
     instructivo: 'Verificar el funcionamiento del freno de plataforma. Controlar el estado de todos los componentes del sistema. Lubricar partes móviles según necesidad.' },
 
   { codigo: 'MP01-003', nombre: 'Bases y Anclajes de Cables', actividad_id: 'tirolesa', frecuencia: 'semestral',
-    descripcion: 'Revisión trimestral profunda de todas las bases y anclajes de los cables.',
+    descripcion: 'Revisión semestral profunda de todas las bases y anclajes de los cables.',
     tareas: ['Inspección visual de todos los anclajes', 'Control de tornillos y bulones con torquímetro', 'Verificación de estado de macizos de hormigón', 'Control de corrosión en elementos metálicos'],
     materiales: ['EPP completo', 'Torquímetro', 'Antioxidante', 'Pintura protectora'],
     instructivo: 'Revisión completa de cada punto de anclaje. Verificar el torque de todos los elementos de fijación. Controlar el estado del hormigón en los macizos. Tratar la corrosión con antioxidante y pintura.' },
@@ -57,19 +57,19 @@ export const PLANILLAS_INICIALES = [
     instructivo: 'Verificar visualmente el estado de todos los elementos de la plataforma. Controlar la firmeza de barandas y pasamanos. Verificar el estado del piso antideslizante.' },
 
   { codigo: 'MP20-008', nombre: 'Barandas de Senderos — Control', actividad_id: 'tirolesa', frecuencia: 'trimestral',
-    descripcion: 'Control mensual de barandas y elementos de seguridad en senderos.',
+    descripcion: 'Control trimestral de barandas y elementos de seguridad en senderos.',
     tareas: ['Verificación de firmeza de barandas', 'Control de postes de sujeción', 'Estado de pintado y señalética'],
     materiales: ['Pintura', 'Herramientas de fijación'],
     instructivo: 'Recorrer todos los senderos controlando el estado de las barandas. Verificar la firmeza de cada poste. Controlar el estado de la señalética.' },
 
   { codigo: 'MP20-009', nombre: 'Plataformas de Vuelo — Ajuste', actividad_id: 'tirolesa', frecuencia: 'semestral',
-    descripcion: 'Revisión trimestral de todas las plataformas del circuito.',
+    descripcion: 'Revisión semestral de todas las plataformas del circuito: tornillería, triangulaciones, techos y chapas.',
     tareas: ['Control estructural de maderas', 'Verificación de elementos de fijación', 'Estado de impermeabilización'],
     materiales: ['Sellador de madera', 'Tornillos', 'Herramientas'],
     instructivo: 'Inspección detallada de cada plataforma. Verificar el estado de las maderas, reemplazar las deterioradas.' },
 
   { codigo: 'MP20-010', nombre: 'Barandas de Senderos — Pintura', actividad_id: 'tirolesa', frecuencia: 'semestral',
-    descripcion: 'Revisión trimestral de barandas secundarias.',
+    descripcion: 'Pintado semestral con impregnante de todas las barandas de los senderos y control de estado.',
     tareas: ['Control de firmeza general', 'Verificación de elementos metálicos'],
     materiales: ['Antioxidante', 'Tornillos'],
     instructivo: 'Verificar el estado de barandas secundarias. Tratar la oxidación.' },

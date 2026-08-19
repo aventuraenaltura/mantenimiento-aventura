@@ -523,10 +523,33 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
       if (inicio) {
         fechas = getFechasDelMes(inicio, p.frecuencia, hoy.getFullYear(), hoy.getMonth())
       } else {
-        const proxima = getProximaFecha(p)
-        const d = new Date(proxima)
-        if (d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear()) {
-          fechas = [proxima]
+        // Recalcular próxima fecha desde la última ejecución + frecuencia actual
+        const ultimaEj = ejecuciones
+          .filter(e => e.planilla_id === p.codigo)
+          .sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
+
+        let proximaReal: string
+        if (ultimaEj) {
+          // Recalcular desde la fecha real del último registro con la frecuencia actual
+          proximaReal = calcularProximaFecha(ultimaEj.fecha, p.frecuencia)
+        } else {
+          proximaReal = getProximaFecha(p)
+        }
+
+        const d = new Date(proximaReal)
+        const mesActualIdx = hoy.getMonth()
+        const anioActual = hoy.getFullYear()
+
+        if (d.getMonth() === mesActualIdx && d.getFullYear() === anioActual) {
+          // Cae en este mes
+          fechas = [proximaReal]
+        } else if (d < hoy) {
+          // Está vencida (fecha pasada) — mostrarla igual en el día 1 del mes como vencida
+          fechas = [`${anioActual}-${String(mesActualIdx + 1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`]
+          // Si el día no existe en este mes, usar el último día del mes
+          const ultimoDiaMes = new Date(anioActual, mesActualIdx + 1, 0).getDate()
+          const dia = Math.min(d.getDate(), ultimoDiaMes)
+          fechas = [`${anioActual}-${String(mesActualIdx + 1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`]
         }
       }
       fechas.forEach(f => {

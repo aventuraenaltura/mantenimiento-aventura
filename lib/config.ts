@@ -43,6 +43,7 @@ export function getFechasDelMes(
       case 'diaria':     cursor.setDate(cursor.getDate() + 1); break
       case 'semanal':    cursor.setDate(cursor.getDate() + 7); break
       case 'mensual':    cursor.setMonth(cursor.getMonth() + 1); break
+      case 'bimestral':  cursor.setMonth(cursor.getMonth() + 2); break
       case 'trimestral': cursor.setMonth(cursor.getMonth() + 3); break
       case 'semestral':  cursor.setMonth(cursor.getMonth() + 6); break
       case 'anual':      cursor.setFullYear(cursor.getFullYear() + 1); break
@@ -76,6 +77,7 @@ export function getProximaFechaDesdeConfig(fechaInicio: string, frecuencia: stri
       case 'diaria':     cursor.setDate(cursor.getDate() + 1); break
       case 'semanal':    cursor.setDate(cursor.getDate() + 7); break
       case 'mensual':    cursor.setMonth(cursor.getMonth() + 1); break
+      case 'bimestral':  cursor.setMonth(cursor.getMonth() + 2); break
       case 'trimestral': cursor.setMonth(cursor.getMonth() + 3); break
       case 'semestral':  cursor.setMonth(cursor.getMonth() + 6); break
       case 'anual':      cursor.setFullYear(cursor.getFullYear() + 1); break

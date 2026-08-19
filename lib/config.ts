@@ -17,8 +17,19 @@ export function setConfig(config: ConfigPlanilla[]) {
 }
 
 export function getFechaInicio(planillaId: string): string | null {
+  // Buscar en config_planillas (formato viejo)
   const config = getConfig()
-  return config.find(c => c.planilla_id === planillaId)?.fecha_inicio ?? null
+  const viejo = config.find(c => c.planilla_id === planillaId)?.fecha_inicio ?? null
+  if (viejo) return viejo
+  // Buscar en config_fechas_cache (formato nuevo de db.ts)
+  try {
+    const raw = localStorage.getItem('config_fechas_cache')
+    if (raw) {
+      const cache = JSON.parse(raw)
+      return cache[planillaId] ?? null
+    }
+  } catch { /* skip */ }
+  return null
 }
 
 // Dado fecha de inicio y frecuencia, devuelve todas las fechas programadas para un mes dado

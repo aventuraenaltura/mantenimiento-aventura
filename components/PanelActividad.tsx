@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
 import { fmtFecha } from '@/lib/fecha'
 import LibroIngeniero from '@/components/LibroIngeniero'
+import { cargarEjecuciones, insertarEjecucion, actualizarEjecucion } from '@/lib/db'
 import { getFechaInicio, getProximaFechaDesdeConfig, getFechasDelMes } from '@/lib/config'
 import { cargarConfigFechas, guardarConfigFecha } from '@/lib/db'
 import type { Planilla } from '@/lib/supabase'
@@ -140,9 +141,18 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     setProximasFechas(fechas)
     setConfigCargada(true)
 
-    // Cargar ejecuciones guardadas
-    const rawEj = localStorage.getItem(`ejecuciones_${actividadId}`)
-    if (rawEj) setEjecuciones(JSON.parse(rawEj))
+    // Cargar ejecuciones desde Supabase (sync entre dispositivos)
+    cargarEjecuciones(actividadId).then(data => {
+      if (data && data.length > 0) {
+        setEjecuciones(data)
+        // Cache local para acceso rápido
+        localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(data))
+      } else {
+        // Fallback a localStorage si Supabase falla o no tiene datos
+        const rawEj = localStorage.getItem(`ejecuciones_${actividadId}`)
+        if (rawEj) setEjecuciones(JSON.parse(rawEj))
+      }
+    })
 
     // Cargar archivos originales guardados
     const raw = localStorage.getItem(`archivos_originales_${actividadId}`)
@@ -412,32 +422,28 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     }
 
     if (editandoEjecucion) {
+      const cambios = {
+        fecha: form.fecha,
+        proxima_fecha: proxima,
+        ejecutado_por: form.nombre,
+        controlo: form.controlo,
+        ingeniero: form.ingeniero,
+        tiempo_min: form.tiempo ? Number(form.tiempo) : null,
+        repuestos: form.repuestos,
+        observaciones: form.obs,
+        ...(firmadoUrl ? { archivo_nombre: firmadoNombre, archivo_url: firmadoUrl } : {}),
+        ...(agrimensoresSubidos.length > 0 ? { archivos_agrimensor: agrimensoresSubidos } : {}),
+      }
+      await actualizarEjecucion(editandoEjecucion, cambios)
       setEjecuciones(prev => {
-        const nuevas = prev.map(e => {
-          if (e.id !== editandoEjecucion) return e
-          return {
-            ...e,
-            fecha: form.fecha,
-            proxima_fecha: proxima,
-            ejecutado_por: form.nombre,
-            controlo: form.controlo,
-            ingeniero: form.ingeniero,
-            tiempo_min: form.tiempo ? Number(form.tiempo) : undefined,
-            repuestos: form.repuestos,
-            observaciones: form.obs,
-            ...(firmadoUrl ? { archivo_nombre: firmadoNombre, archivo_url: firmadoUrl, archivo_data: undefined } : {}),
-            archivos_agrimensor: agrimensoresSubidos.length > 0
-              ? [...(e.archivos_agrimensor ?? []), ...agrimensoresSubidos]
-              : e.archivos_agrimensor,
-          }
-        })
+        const nuevas = prev.map(e => e.id !== editandoEjecucion ? e : { ...e, ...cambios })
         localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
         return nuevas
       })
       setEditandoEjecucion(null)
     } else {
       const nueva: Ejecucion = {
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         planilla_id: planillaSeleccionada.codigo,
         fecha: form.fecha,
         proxima_fecha: proxima,
@@ -451,6 +457,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
         archivo_url: firmadoUrl,
         archivos_agrimensor: agrimensoresSubidos,
       }
+      await insertarEjecucion(actividadId, nueva as Record<string, unknown>)
       setEjecuciones(prev => {
         const nuevas = [...prev, nueva]
         localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
@@ -475,8 +482,9 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     }
   }
 
-  function borrarEjecucion(ejId: string) {
+  async function borrarEjecucion(ejId: string) {
     if (!window.confirm('¿Borrar este registro? Esta acción no se puede deshacer.')) return
+    await supabase.from('ejecuciones').delete().eq('id', ejId)
     setEjecuciones(prev => {
       const nuevas = prev.filter(e => e.id !== ejId)
       localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))

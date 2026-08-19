@@ -101,15 +101,21 @@ export default function LegalesPage() {
     const usuario = JSON.parse(u)
     if (usuario.rol !== 'admin') { router.push('/home'); return }
     setAutorizado(true)
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) setDocs(JSON.parse(raw))
-    } catch { /* skip */ }
+    // Cargar desde Supabase
+    supabase.from('legales_docs').select('*').then(({ data }) => {
+      if (data && data.length > 0) {
+        const agrupado: Record<string, Archivo[]> = {}
+        for (const d of data) {
+          if (!agrupado[d.seccion_id]) agrupado[d.seccion_id] = []
+          agrupado[d.seccion_id].push(d)
+        }
+        setDocs(agrupado)
+      }
+    })
   }, [router])
 
-  function guardarDocs(nuevos: Record<string, Archivo[]>) {
+  async function guardarDocs(nuevos: Record<string, Archivo[]>) {
     setDocs(nuevos)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nuevos))
   }
 
   async function subirArchivo(seccionId: string, file: File, vencimiento?: string) {
@@ -126,7 +132,7 @@ export default function LegalesPage() {
 
       const { data: urlData } = supabase.storage.from('planillas-firmadas').getPublicUrl(path)
       const nuevo: Archivo = {
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         nombre: file.name,
         url: urlData.publicUrl,
         fecha_carga: new Date().toISOString().split('T')[0],
@@ -135,7 +141,14 @@ export default function LegalesPage() {
 
       const sec = SECCIONES.find(s => s.id === seccionId)!
       const actuales = docs[seccionId] ?? []
-      // Si no es múltiple, reemplazá el existente
+
+      if (!sec.multiple && actuales.length > 0) {
+        // Borrar el anterior en Supabase antes de insertar el nuevo
+        await supabase.from('legales_docs').delete().eq('seccion_id', seccionId)
+      }
+
+      await supabase.from('legales_docs').insert({ ...nuevo, seccion_id: seccionId })
+
       const nuevosArchivos = sec.multiple ? [...actuales, nuevo] : [nuevo]
       guardarDocs({ ...docs, [seccionId]: nuevosArchivos })
     } catch {
@@ -145,15 +158,17 @@ export default function LegalesPage() {
     }
   }
 
-  function borrarArchivo(seccionId: string, archivoId: string) {
+  async function borrarArchivo(seccionId: string, archivoId: string) {
     if (!window.confirm('¿Borrar este archivo?')) return
+    await supabase.from('legales_docs').delete().eq('id', archivoId)
     const actuales = docs[seccionId] ?? []
     guardarDocs({ ...docs, [seccionId]: actuales.filter(a => a.id !== archivoId) })
   }
 
-  function guardarVencimiento() {
+  async function guardarVencimiento() {
     if (!editandoVenc) return
     const { secId, archivoId, valor } = editandoVenc
+    await supabase.from('legales_docs').update({ fecha_vencimiento: valor || null }).eq('id', archivoId)
     const actuales = docs[secId] ?? []
     guardarDocs({
       ...docs,

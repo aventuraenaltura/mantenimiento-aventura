@@ -428,7 +428,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
         ejecutado_por: form.nombre,
         controlo: form.controlo,
         ingeniero: form.ingeniero,
-        tiempo_min: form.tiempo ? Number(form.tiempo) : null,
+        tiempo_min: form.tiempo ? Number(form.tiempo) : undefined,
         repuestos: form.repuestos,
         observaciones: form.obs,
         ...(firmadoUrl ? { archivo_nombre: firmadoNombre, archivo_url: firmadoUrl } : {}),
@@ -436,7 +436,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
       }
       await actualizarEjecucion(editandoEjecucion, cambios)
       setEjecuciones(prev => {
-        const nuevas = prev.map(e => e.id !== editandoEjecucion ? e : { ...e, ...cambios })
+        const nuevas = prev.map(e => e.id !== editandoEjecucion ? e : ({ ...e, ...cambios } as Ejecucion))
         localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
         return nuevas
       })
@@ -457,7 +457,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
         archivo_url: firmadoUrl,
         archivos_agrimensor: agrimensoresSubidos,
       }
-      await insertarEjecucion(actividadId, nueva as Record<string, unknown>)
+      await insertarEjecucion(actividadId, nueva as unknown as Record<string, unknown>)
       setEjecuciones(prev => {
         const nuevas = [...prev, nueva]
         localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))

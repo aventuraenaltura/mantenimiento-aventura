@@ -356,7 +356,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
 
       const { error } = await Promise.race([uploadPromise, timeoutPromise])
       if (error) {
-        console.error('Error subiendo archivo:', error)
+        console.error('Supabase upload error:', JSON.stringify(error))
         return null
       }
       const { data: urlData } = supabase.storage
@@ -377,19 +377,17 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     const proxima = calcularProximaFecha(form.fecha, planillaSeleccionada.frecuencia)
     const carpeta = `${actividadId}/${planillaSeleccionada.codigo}`
 
-    // Subir PDF firmado a Supabase Storage (en vez de base64)
+    // Subir PDF firmado a Supabase Storage
     let firmadoUrl: string | undefined
     let firmadoNombre: string | undefined
+    let archivoFalló = false
     if (archivoFirmado) {
       const resultado = await subirArchivoAStorage(archivoFirmado, carpeta)
       if (resultado) {
         firmadoUrl = resultado.url
         firmadoNombre = resultado.nombre
       } else {
-        // Fallback a base64 si falla el upload
-        const data = await leerArchivo(archivoFirmado)
-        firmadoUrl = data.data
-        firmadoNombre = data.nombre
+        archivoFalló = true
       }
     }
 
@@ -400,10 +398,11 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
       const resultado = await subirArchivoAStorage(file, `${carpeta}/agrimensor`, i)
       if (resultado) {
         agrimensoresSubidos.push({ nombre: resultado.nombre, data: resultado.url })
-      } else {
-        const data = await leerArchivo(file)
-        agrimensoresSubidos.push(data)
       }
+    }
+
+    if (archivoFalló) {
+      setErrorGuardar('⚠️ El archivo adjunto no se pudo subir. El registro se guardó igualmente sin el adjunto.')
     }
 
     if (editandoEjecucion) {

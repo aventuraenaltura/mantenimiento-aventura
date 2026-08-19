@@ -3,6 +3,7 @@ import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import JSZip from 'jszip'
 import { PLANILLAS_INICIALES, ACTIVIDADES } from '@/lib/datos-iniciales'
+import { obtenerFotosLibro } from '@/components/LibroIngeniero'
 
 interface Ejecucion {
   id: string
@@ -182,6 +183,26 @@ export default function ExportarRegistros() {
     }
 
     setProgreso('Comprimiendo archivos...')
+
+    // Agregar fotos del libro del ingeniero (tirolesa)
+    const fotosLibro = obtenerFotosLibro().filter(f => {
+      const fechaFoto = f.mes + '-01'
+      return fechaFoto >= desde.slice(0, 7) + '-01' && fechaFoto <= hasta.slice(0, 7) + '-31'
+    })
+    for (const foto of fotosLibro) {
+      const mesNombre = mesLabel(foto.mes)
+      const carpetaMes = zip.folder(mesNombre)!
+      const subcarpeta = carpetaMes.folder('libro-ingeniero')!
+      try {
+        const resp = await fetch(foto.url)
+        if (resp.ok) {
+          const buf = await resp.arrayBuffer()
+          const ext = foto.nombre.split('.').pop() ?? 'jpg'
+          subcarpeta.file(`${foto.mes}-libro-ingeniero-${foto.nombre}`, buf)
+        }
+      } catch { /* omitir */ }
+    }
+
     const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
 
     // Descargar

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
 import { fmtFecha } from '@/lib/fecha'
+import LibroIngeniero from '@/components/LibroIngeniero'
 import { getFechaInicio, getProximaFechaDesdeConfig, getFechasDelMes } from '@/lib/config'
 import { cargarConfigFechas, guardarConfigFecha } from '@/lib/db'
 import type { Planilla } from '@/lib/supabase'
@@ -1191,6 +1192,11 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
               {guardando ? '⏳ Guardando...' : editandoEjecucion ? '💾 Guardar cambios' : 'Guardar registro'}
             </button>
           </div>
+        )}
+
+        {/* LIBRO DEL INGENIERO — solo tirolesa */}
+        {actividadId === 'tirolesa' && (
+          <LibroIngeniero esAdmin={esAdmin} />
         )}
 
         {/* SECCIÓN INFERIOR: todas las planillas */}

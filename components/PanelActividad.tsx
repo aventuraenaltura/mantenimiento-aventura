@@ -346,7 +346,9 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
 
       const { error } = await Promise.race([uploadPromise, timeoutPromise])
       if (error) {
-        console.error('Supabase upload error:', JSON.stringify(error))
+        const msg = JSON.stringify(error)
+        console.error('Supabase upload error:', msg)
+        setErrorGuardar(`Error upload: ${msg}`)
         return null
       }
       const { data: urlData } = supabase.storage

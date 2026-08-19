@@ -65,7 +65,7 @@ function calcularProximaFecha(fechaEjecucion: string, frecuencia: string): strin
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const FREC_LABEL: Record<string, string> = {
-  diaria: 'Diaria', semanal: 'Semanal', mensual: 'Mensual',
+  diaria: 'Diaria', semanal: 'Semanal', mensual: 'Mensual', bimestral: 'Bimestral',
   trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual',
 }
 
@@ -1410,7 +1410,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                                 onChange={e => setFormEdicion(f => f ? { ...f, frecuencia: e.target.value } : f)}
                                 className="w-full text-sm rounded-lg px-3 py-2 focus:outline-none"
                                 style={{ border: '1px solid #ddd8cf', background: '#faf8f4', color: '#1c2533' }}>
-                                {['diaria','semanal','mensual','trimestral','semestral','anual'].map(fr => (
+                                {['diaria','semanal','mensual','bimestral','trimestral','semestral','anual'].map(fr => (
                                   <option key={fr} value={fr}>{FREC_LABEL[fr]}</option>
                                 ))}
                               </select>

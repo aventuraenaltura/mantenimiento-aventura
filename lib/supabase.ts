@@ -29,7 +29,7 @@ export interface Planilla {
   nombre: string
   descripcion: string
   actividad_id: string
-  frecuencia: 'diaria' | 'semanal' | 'mensual' | 'trimestral' | 'semestral' | 'anual'
+  frecuencia: 'diaria' | 'semanal' | 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'
   tareas: string[]
   materiales: string[]
   instructivo: string
@@ -104,6 +104,7 @@ export function calcularProximaFecha(fechaEjecucion: string, frecuencia: Planill
     case 'diaria':      fecha.setDate(fecha.getDate() + 1); break
     case 'semanal':     fecha.setDate(fecha.getDate() + 7); break
     case 'mensual':     fecha.setMonth(fecha.getMonth() + 1); break
+    case 'bimestral':   fecha.setMonth(fecha.getMonth() + 2); break
     case 'trimestral':  fecha.setMonth(fecha.getMonth() + 3); break
     case 'semestral':   fecha.setMonth(fecha.getMonth() + 6); break
     case 'anual':       fecha.setFullYear(fecha.getFullYear() + 1); break

@@ -20,8 +20,8 @@ export const PLANILLAS_INICIALES = [
     materiales: ['EPP: Casco, guantes, lentes, arnés, equipo de vuelo', 'Llave de tubo', 'Grasa'],
     instructivo: 'Usar EPP completo para desplazamiento de una base a otra. Verificar visualmente el estado de cada anclaje. Controlar que las marcas de pintura no hayan sido alteradas. Verificar ajuste de todos los elementos.' },
 
-  { codigo: 'MP01-002', nombre: 'Freno de Plataforma', actividad_id: 'tirolesa', frecuencia: 'mensual',
-    descripcion: 'Control mensual del sistema de freno en plataformas de llegada.',
+  { codigo: 'MP01-002', nombre: 'Freno de Plataforma', actividad_id: 'tirolesa', frecuencia: 'bimestral',
+    descripcion: 'Control bimestral del sistema de freno en plataformas de llegada.',
     tareas: ['Control de estado del freno principal', 'Verificación de amortiguadores', 'Control de anclajes del sistema de freno', 'Lubricación si corresponde'],
     materiales: ['EPP completo', 'Lubricante', 'Llave de tubo'],
     instructivo: 'Verificar el funcionamiento del freno de plataforma. Controlar el estado de todos los componentes del sistema. Lubricar partes móviles según necesidad.' },

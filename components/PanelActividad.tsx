@@ -57,7 +57,9 @@ function calcularProximaFecha(fechaEjecucion: string, frecuencia: string): strin
     case 'diaria':      fecha.setDate(fecha.getDate() + 1); break
     case 'semanal':     fecha.setDate(fecha.getDate() + 7); break
     case 'mensual':     fecha.setMonth(fecha.getMonth() + 1); break
+    case 'bimestral':   fecha.setMonth(fecha.getMonth() + 2); break
     case 'trimestral':  fecha.setMonth(fecha.getMonth() + 3); break
+    case 'semestral':   fecha.setMonth(fecha.getMonth() + 6); break
     case 'semestral':   fecha.setMonth(fecha.getMonth() + 6); break
     case 'anual':       fecha.setFullYear(fecha.getFullYear() + 1); break
   }
@@ -1287,7 +1289,13 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                       </div>
                       <div className="text-right flex-shrink-0">
                         <span className="text-xs font-bold rounded-lg px-2.5 py-1" style={badgeStyle}>{badgeText}</span>
-                        <p className="text-xs text-gray-400 mt-1">{fmtFecha(proxima)}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {(() => {
+                            const hoy = new Date().toISOString().split('T')[0]
+                            if (proxima < hoy) return `Venció el ${fmtFecha(proxima)}`
+                            return `Próxima: ${fmtFecha(proxima)}`
+                          })()}
+                        </p>
                       </div>
                     </div>
 

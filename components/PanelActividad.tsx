@@ -304,11 +304,11 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   }
 
   function getProximaFecha(p: Planilla): string {
-    // Prioridad: última ejecución registrada > config > demo
+    // Recalcular siempre desde la última ejecución + frecuencia actual (evita fechas stale)
     const ej = ejecuciones.filter(e => e.planilla_id === p.codigo).sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
-    if (ej) return ej.proxima_fecha
+    if (ej) return calcularProximaFecha(ej.fecha, p.frecuencia)
     if (proximasFechas[p.codigo]) return proximasFechas[p.codigo]
-    // Demo sin config: simular variedad de estados
+    // Sin ejecuciones: simular variedad de estados
     const base = new Date()
     if (p.frecuencia === 'diaria') base.setDate(base.getDate() - 1)
     else if (p.frecuencia === 'semanal') base.setDate(base.getDate() + 5)
@@ -1279,7 +1279,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                       </div>
                       <div className="text-right flex-shrink-0">
                         <span className="text-xs font-bold rounded-lg px-2.5 py-1" style={badgeStyle}>{badgeText}</span>
-                        <p className="text-xs text-gray-400 mt-1">{proxima}</p>
+                        <p className="text-xs text-gray-400 mt-1">{fmtFecha(proxima)}</p>
                       </div>
                     </div>
 

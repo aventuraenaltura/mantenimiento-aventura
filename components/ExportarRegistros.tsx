@@ -185,9 +185,8 @@ export default function ExportarRegistros() {
     setProgreso('Comprimiendo archivos...')
 
     // Agregar fotos del libro del ingeniero (tirolesa)
-    const fotosLibro = obtenerFotosLibro().filter(f => {
-      const fechaFoto = f.mes + '-01'
-      return fechaFoto >= desde.slice(0, 7) + '-01' && fechaFoto <= hasta.slice(0, 7) + '-31'
+    const fotosLibro = (await obtenerFotosLibro()).filter(f => {
+      return f.mes >= desde.slice(0, 7) && f.mes <= hasta.slice(0, 7)
     })
     for (const foto of fotosLibro) {
       const mesNombre = mesLabel(foto.mes)

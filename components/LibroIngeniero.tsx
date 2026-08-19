@@ -5,13 +5,12 @@ import { fmtFecha } from '@/lib/fecha'
 
 interface FotoLibro {
   id: string
-  mes: string       // YYYY-MM
+  mes: string
   url: string
   nombre: string
   fecha_subida: string
 }
 
-const STORAGE_KEY = 'libro_ingeniero_tirolesa'
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
 function mesLabel(mes: string) {
@@ -25,63 +24,60 @@ function mesActual() {
 
 export default function LibroIngeniero({ esAdmin }: { esAdmin: boolean }) {
   const [fotos, setFotos] = useState<FotoLibro[]>([])
+  const [cargando, setCargando] = useState(true)
   const [subiendo, setSubiendo] = useState(false)
   const [mesSeleccionado, setMesSeleccionado] = useState(mesActual())
   const [error, setError] = useState<string | null>(null)
   const [expandido, setExpandido] = useState(false)
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) setFotos(JSON.parse(raw))
-    } catch { /* skip */ }
-  }, [])
+  useEffect(() => { cargarFotos() }, [])
 
-  function guardarFotos(nuevas: FotoLibro[]) {
-    setFotos(nuevas)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nuevas))
+  async function cargarFotos() {
+    setCargando(true)
+    const { data } = await supabase
+      .from('libro_ingeniero')
+      .select('*')
+      .order('mes', { ascending: false })
+    if (data) setFotos(data)
+    setCargando(false)
   }
 
   async function subirFoto(file: File) {
     setSubiendo(true)
     setError(null)
     try {
-      const ext = file.name.split('.').pop() ?? 'jpg'
       const path = `tirolesa/libro-ingeniero/${mesSeleccionado}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-
       const uploadPromise = supabase.storage.from('planillas-firmadas').upload(path, file, { upsert: true })
       const timeout = new Promise<{ data: null; error: Error }>(res =>
         setTimeout(() => res({ data: null, error: new Error('Timeout') }), 20000)
       )
       const { error: uploadError } = await Promise.race([uploadPromise, timeout])
-
-      if (uploadError) {
-        setError('No se pudo subir la foto. Revisá tu conexión.')
-        return
-      }
+      if (uploadError) { setError('No se pudo subir la foto. Revisá tu conexión.'); return }
 
       const { data: urlData } = supabase.storage.from('planillas-firmadas').getPublicUrl(path)
       const nueva: FotoLibro = {
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         mes: mesSeleccionado,
         url: urlData.publicUrl,
         nombre: file.name,
         fecha_subida: new Date().toISOString().split('T')[0],
       }
-      guardarFotos([...fotos, nueva])
-    } catch (e) {
+      const { error: dbError } = await supabase.from('libro_ingeniero').insert(nueva)
+      if (dbError) { setError('La foto se subió pero no se pudo registrar. Recargá la página.'); return }
+      setFotos(prev => [nueva, ...prev])
+    } catch {
       setError('Error al subir la foto.')
     } finally {
       setSubiendo(false)
     }
   }
 
-  function borrarFoto(id: string) {
+  async function borrarFoto(id: string) {
     if (!window.confirm('¿Borrar esta foto del libro?')) return
-    guardarFotos(fotos.filter(f => f.id !== id))
+    await supabase.from('libro_ingeniero').delete().eq('id', id)
+    setFotos(prev => prev.filter(f => f.id !== id))
   }
 
-  // Agrupar por mes descendente
   const porMes = fotos.reduce((acc, f) => {
     if (!acc[f.mes]) acc[f.mes] = []
     acc[f.mes].push(f)
@@ -90,7 +86,6 @@ export default function LibroIngeniero({ esAdmin }: { esAdmin: boolean }) {
 
   const mesesOrdenados = Object.keys(porMes).sort((a, b) => b.localeCompare(a))
 
-  // Generar opciones de mes (últimos 24 meses)
   const opcionesMes: string[] = []
   const hoy = new Date()
   for (let i = 0; i < 24; i++) {
@@ -100,10 +95,7 @@ export default function LibroIngeniero({ esAdmin }: { esAdmin: boolean }) {
 
   return (
     <div className="panel rounded-2xl border border-gray-200 p-5">
-      <button
-        className="w-full flex items-center justify-between"
-        onClick={() => setExpandido(e => !e)}
-      >
+      <button className="w-full flex items-center justify-between" onClick={() => setExpandido(e => !e)}>
         <div className="flex items-center gap-3">
           <span className="text-2xl">📖</span>
           <div className="text-left">
@@ -111,7 +103,7 @@ export default function LibroIngeniero({ esAdmin }: { esAdmin: boolean }) {
               Libro del Ingeniero
             </p>
             <p style={{ fontSize: 11, color: '#a0aec0' }}>
-              {fotos.length === 0 ? 'Sin fotos cargadas' : `${fotos.length} foto${fotos.length !== 1 ? 's' : ''} en ${mesesOrdenados.length} mes${mesesOrdenados.length !== 1 ? 'es' : ''}`}
+              {cargando ? 'Cargando...' : fotos.length === 0 ? 'Sin fotos cargadas' : `${fotos.length} foto${fotos.length !== 1 ? 's' : ''} en ${mesesOrdenados.length} mes${mesesOrdenados.length !== 1 ? 'es' : ''}`}
             </p>
           </div>
         </div>
@@ -120,8 +112,6 @@ export default function LibroIngeniero({ esAdmin }: { esAdmin: boolean }) {
 
       {expandido && (
         <div className="mt-5 space-y-5">
-
-          {/* Subir foto — solo admin */}
           {esAdmin && (
             <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
               <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12, color: '#92400e', marginBottom: 10 }}>
@@ -129,15 +119,10 @@ export default function LibroIngeniero({ esAdmin }: { esAdmin: boolean }) {
               </p>
               <div className="flex gap-2 items-center mb-3">
                 <label style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Mes:</label>
-                <select
-                  value={mesSeleccionado}
-                  onChange={e => setMesSeleccionado(e.target.value)}
+                <select value={mesSeleccionado} onChange={e => setMesSeleccionado(e.target.value)}
                   className="flex-1 border rounded-lg px-2 py-1.5 text-sm focus:outline-none"
-                  style={{ border: '1.5px solid #e5e7eb' }}
-                >
-                  {opcionesMes.map(m => (
-                    <option key={m} value={m}>{mesLabel(m)}</option>
-                  ))}
+                  style={{ border: '1.5px solid #e5e7eb' }}>
+                  {opcionesMes.map(m => <option key={m} value={m}>{mesLabel(m)}</option>)}
                 </select>
               </div>
               <label className="flex items-center gap-2 cursor-pointer border-2 border-dashed rounded-lg px-3 py-3 transition-colors border-amber-200 text-amber-600 hover:border-amber-400 hover:bg-amber-100">
@@ -145,26 +130,16 @@ export default function LibroIngeniero({ esAdmin }: { esAdmin: boolean }) {
                 <span className="text-xs font-medium flex-1">
                   {subiendo ? 'Subiendo...' : `Seleccionar foto para ${mesLabel(mesSeleccionado)}`}
                 </span>
-                <input
-                  type="file"
-                  accept="image/*,.pdf"
-                  className="hidden"
-                  disabled={subiendo}
-                  onChange={e => {
-                    const file = e.target.files?.[0]
-                    if (file) subirFoto(file)
-                    e.target.value = ''
-                  }}
-                />
+                <input type="file" accept="image/*,.pdf" className="hidden" disabled={subiendo}
+                  onChange={e => { const file = e.target.files?.[0]; if (file) subirFoto(file); e.target.value = '' }} />
               </label>
-              {error && (
-                <p className="mt-2 text-xs text-red-500">⚠️ {error}</p>
-              )}
+              {error && <p className="mt-2 text-xs text-red-500">⚠️ {error}</p>}
             </div>
           )}
 
-          {/* Galería por mes */}
-          {mesesOrdenados.length === 0 ? (
+          {cargando ? (
+            <p className="text-sm text-center text-gray-400 py-4">Cargando fotos...</p>
+          ) : mesesOrdenados.length === 0 ? (
             <p className="text-sm text-center text-gray-400 py-4">Todavía no hay fotos del libro cargadas.</p>
           ) : (
             <div className="space-y-4">
@@ -206,10 +181,7 @@ export default function LibroIngeniero({ esAdmin }: { esAdmin: boolean }) {
   )
 }
 
-// Exportar función para que ExportarRegistros pueda acceder a las fotos
-export function obtenerFotosLibro(): { mes: string; url: string; nombre: string }[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch { return [] }
+export async function obtenerFotosLibro(): Promise<{ mes: string; url: string; nombre: string }[]> {
+  const { data } = await supabase.from('libro_ingeniero').select('mes, url, nombre')
+  return data ?? []
 }

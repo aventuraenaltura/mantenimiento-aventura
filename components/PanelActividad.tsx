@@ -253,6 +253,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     const p = planillas.find(x => x.codigo === codigo)
     if (p) abrirEdicionPlanilla(p)
     setTabConfig('planilla')
+    setConfigTutorialAbierto(codigo)
   }
 
   function guardarFormTutorial(codigo: string) {
@@ -270,18 +271,18 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   }
 
   const ARCHIVOS_PLANILLAS: Record<string, string> = {
-    'MP00-001': '/planillas/MP00-001 Senderos (diaria).pdf',
-    'MP01-001': '/planillas/MP01-001 Bases Anclaje Cables.pdf',
-    'MP01-002': '/planillas/MP01-002 Freno Plataforma.pdf',
+    'MP00-001': '/planillas/MP00-001 Apertura de Parque.pdf',
+    'MP01-001': '/planillas/MP01-001 Bases Anclaje y Cables.pdf',
+    'MP01-002': '/planillas/MP01-002 Freno Plataforma de Vuelo.pdf',
     'MP01-003': '/planillas/MP01-003 Bases y Anclajes de Cables.pdf',
-    'MP01-004': '/planillas/MP01-004 Equipo de vuelo.pdf',
-    'MP01-005': '/planillas/MP01-005 Cables.pdf',
-    'MP01-006': '/planillas/MP01-006 Anclaje Cables.pdf',
-    'MP20-007': '/planillas/MP20-007 Plataforma de vuelo.pdf',
-    'MP20-008': '/planillas/MP20-008 Barandas Senderos.pdf',
-    'MP20-009': '/planillas/MP20-009 Plataformas.pdf',
-    'MP20-010': '/planillas/MP20-010 Baranda de Senderos.pdf',
-    'MP20-011': '/planillas/MP20-011 Plataformas de Vuelo.pdf',
+    'MP01-004': '/planillas/MP01-004 Equipos de Vuelo.pdf',
+    'MP01-005': '/planillas/MP01-005 Prueba de Carga Anual.pdf',
+    'MP01-006': '/planillas/MP01-006 Torque Prensacables.pdf',
+    'MP20-007': '/planillas/MP20-007 Plataformas de Vuelo Barandas y Piso.pdf',
+    'MP20-008': '/planillas/MP20-008 Barandas de Senderos Control.pdf',
+    'MP20-009': '/planillas/MP20-009 Plataformas de Vuelo Ajuste.pdf',
+    'MP20-010': '/planillas/MP20-010 Barandas de Senderos Pintura.pdf',
+    'MP20-011': '/planillas/MP20-011 Plataformas de Vuelo Pintura.pdf',
   }
 
   function abrirArchivoOriginal(codigo: string) {

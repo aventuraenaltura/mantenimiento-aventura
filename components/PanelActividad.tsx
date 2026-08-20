@@ -311,7 +311,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     return base.toISOString().split('T')[0]
   }
 
-  // Calcula si una planilla cae en un mes/año dado, y cuál es esa fecha
+  // Calcula si una planilla está programada para un mes/año dado
   function getFechaEnMes(p: Planilla, mes: number, anio: number): string | null {
     const ultimaEj = ejecuciones
       .filter(e => e.planilla_id === p.codigo)
@@ -319,29 +319,25 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
 
     if (!ultimaEj) return null
 
-    // Calcular fechas futuras iterando desde la última ejecución
-    let cursor = calcularProximaFecha(ultimaEj.fecha, p.frecuencia)
-    const limite = new Date(anio, mes + 3, 1) // no iterar más allá de 3 meses del target
+    const targetInicio = new Date(anio, mes, 1)
+    const targetFin = new Date(anio, mes + 1, 0)
 
-    // Para meses pasados, buscar desde la ejecución hacia adelante hasta el mes objetivo
-    let intentos = 0
-    while (intentos < 100) {
+    // Buscar hacia adelante desde la última ejecución
+    let cursor = calcularProximaFecha(ultimaEj.fecha, p.frecuencia)
+    for (let i = 0; i < 200; i++) {
       const d = new Date(cursor)
-      if (d.getMonth() === mes && d.getFullYear() === anio) return cursor
-      if (d > limite) break
-      if (d.getFullYear() > anio || (d.getFullYear() === anio && d.getMonth() > mes)) break
+      if (d >= targetInicio && d <= targetFin) return cursor
+      if (d > targetFin) break
       cursor = calcularProximaFecha(cursor, p.frecuencia)
-      intentos++
     }
 
-    // Para meses pasados: retroceder desde la última ejecución
+    // Buscar hacia atrás desde la última ejecución para meses pasados
     let cursorAtr = ultimaEj.fecha
-    intentos = 0
-    while (intentos < 100) {
+    for (let i = 0; i < 200; i++) {
       const d = new Date(cursorAtr)
-      if (d.getMonth() === mes && d.getFullYear() === anio) return cursorAtr
-      if (d.getFullYear() < anio || (d.getFullYear() === anio && d.getMonth() < mes)) break
-      // Retroceder un ciclo (restar la frecuencia)
+      if (d >= targetInicio && d <= targetFin) return cursorAtr
+      if (d < targetInicio) break
+      // Retroceder un ciclo
       const prev = new Date(cursorAtr)
       if (p.frecuencia === 'diaria') prev.setDate(prev.getDate() - 1)
       else if (p.frecuencia === 'semanal') prev.setDate(prev.getDate() - 7)
@@ -352,7 +348,6 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
       else if (p.frecuencia === 'anual') prev.setFullYear(prev.getFullYear() - 1)
       else break
       cursorAtr = prev.toISOString().split('T')[0]
-      intentos++
     }
 
     return null

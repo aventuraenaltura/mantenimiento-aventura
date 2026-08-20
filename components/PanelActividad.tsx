@@ -43,8 +43,6 @@ interface Props {
 function colorEstadoFecha(proximaFecha: string): 'rojo' | 'naranja' | 'verde' {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
-  const [calMes, setCalMes] = useState(hoy.getMonth())
-  const [calAnio, setCalAnio] = useState(hoy.getFullYear())
   const proxima = new Date(proximaFecha)
   const diff = (proxima.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24)
   if (diff < 0) return 'rojo'
@@ -123,6 +121,9 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   const planillas = planillasBase.map(p => ({ ...p, ...edicionesPlanillas[p.codigo] }))
 
   const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const [calMes, setCalMes] = useState(hoy.getMonth())
+  const [calAnio, setCalAnio] = useState(hoy.getFullYear())
 
   // Cargar datos desde localStorage y Supabase (client-only)
   useEffect(() => {

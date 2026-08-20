@@ -895,7 +895,26 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
 
           {/* Calendario */}
           <div className="panel rounded-2xl border border-gray-200 p-5">
-            <h3 className="font-bold text-gray-800 mb-3">{MESES[calMes]} {calAnio}</h3>
+            <div className="flex items-center justify-between mb-3">
+              <button onClick={() => { const d = new Date(calAnio, calMes - 1, 1); setCalMes(d.getMonth()); setCalAnio(d.getFullYear()) }}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 font-bold text-lg">‹</button>
+              <div className="flex items-center gap-2">
+                <select value={`${calAnio}-${calMes}`}
+                  onChange={e => { const [a,m] = e.target.value.split('-'); setCalAnio(Number(a)); setCalMes(Number(m)) }}
+                  className="font-bold text-gray-800 bg-transparent focus:outline-none cursor-pointer text-base">
+                  {Array.from({ length: 24 }, (_, i) => {
+                    const d = new Date(hoy.getFullYear(), hoy.getMonth() - 12 + i, 1)
+                    return <option key={i} value={`${d.getFullYear()}-${d.getMonth()}`}>{MESES[d.getMonth()]} {d.getFullYear()}</option>
+                  })}
+                </select>
+                {(calMes !== hoy.getMonth() || calAnio !== hoy.getFullYear()) && (
+                  <button onClick={() => { setCalMes(hoy.getMonth()); setCalAnio(hoy.getFullYear()) }}
+                    className="text-xs text-blue-500 hover:underline">Hoy</button>
+                )}
+              </div>
+              <button onClick={() => { const d = new Date(calAnio, calMes + 1, 1); setCalMes(d.getMonth()); setCalAnio(d.getFullYear()) }}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 font-bold text-lg">›</button>
+            </div>
             {/* Cabecera días semana */}
             <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold mb-1" style={{ color: '#9ca3af' }}>
               {['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map(d => <div key={d}>{d}</div>)}

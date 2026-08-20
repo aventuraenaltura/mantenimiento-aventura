@@ -311,15 +311,69 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     return base.toISOString().split('T')[0]
   }
 
+  // Calcula si una planilla cae en un mes/año dado, y cuál es esa fecha
+  function getFechaEnMes(p: Planilla, mes: number, anio: number): string | null {
+    const ultimaEj = ejecuciones
+      .filter(e => e.planilla_id === p.codigo)
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
+
+    if (!ultimaEj) return null
+
+    // Calcular fechas futuras iterando desde la última ejecución
+    let cursor = calcularProximaFecha(ultimaEj.fecha, p.frecuencia)
+    const limite = new Date(anio, mes + 3, 1) // no iterar más allá de 3 meses del target
+
+    // Para meses pasados, buscar desde la ejecución hacia adelante hasta el mes objetivo
+    let intentos = 0
+    while (intentos < 100) {
+      const d = new Date(cursor)
+      if (d.getMonth() === mes && d.getFullYear() === anio) return cursor
+      if (d > limite) break
+      if (d.getFullYear() > anio || (d.getFullYear() === anio && d.getMonth() > mes)) break
+      cursor = calcularProximaFecha(cursor, p.frecuencia)
+      intentos++
+    }
+
+    // Para meses pasados: retroceder desde la última ejecución
+    let cursorAtr = ultimaEj.fecha
+    intentos = 0
+    while (intentos < 100) {
+      const d = new Date(cursorAtr)
+      if (d.getMonth() === mes && d.getFullYear() === anio) return cursorAtr
+      if (d.getFullYear() < anio || (d.getFullYear() === anio && d.getMonth() < mes)) break
+      // Retroceder un ciclo (restar la frecuencia)
+      const prev = new Date(cursorAtr)
+      if (p.frecuencia === 'diaria') prev.setDate(prev.getDate() - 1)
+      else if (p.frecuencia === 'semanal') prev.setDate(prev.getDate() - 7)
+      else if (p.frecuencia === 'mensual') prev.setMonth(prev.getMonth() - 1)
+      else if (p.frecuencia === 'bimestral') prev.setMonth(prev.getMonth() - 2)
+      else if (p.frecuencia === 'trimestral') prev.setMonth(prev.getMonth() - 3)
+      else if (p.frecuencia === 'semestral') prev.setMonth(prev.getMonth() - 6)
+      else if (p.frecuencia === 'anual') prev.setFullYear(prev.getFullYear() - 1)
+      else break
+      cursorAtr = prev.toISOString().split('T')[0]
+      intentos++
+    }
+
+    return null
+  }
+
   // Planillas programadas para el mes seleccionado
   function getPlanillasMes() {
     const resultado: { planilla: Planilla; fechas: string[] }[] = []
     planillas.forEach(p => {
-      const proxima = getProximaFecha(p)
-      const d = new Date(proxima)
-      if (d.getMonth() === calMes && d.getFullYear() === calAnio) {
-        resultado.push({ planilla: p, fechas: [proxima] })
+      // Verificar si hay ejecución en ese mes
+      const ejEnMes = ejecuciones.find(e => {
+        const d = new Date(e.fecha)
+        return e.planilla_id === p.codigo && d.getMonth() === calMes && d.getFullYear() === calAnio
+      })
+      if (ejEnMes) {
+        resultado.push({ planilla: p, fechas: [ejEnMes.fecha] })
+        return
       }
+      // Calcular si la planilla cae en ese mes
+      const fecha = getFechaEnMes(p, calMes, calAnio)
+      if (fecha) resultado.push({ planilla: p, fechas: [fecha] })
     })
     return resultado
   }
@@ -499,39 +553,40 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     setMostrarHistorial(false)
   }
 
-  // Días del mes con planillas — cada entrada guarda lista de { codigo, color, estado }
+  // Días del mes con planillas
   const diasConPlanilla: Record<number, { codigo: string; nombre: string; color: string; estado: 'realizada' | 'para_realizar' | 'vencida' }[]> = {}
   planillas.forEach(p => {
-    const ultimaEj = ejecuciones
-      .filter(e => e.planilla_id === p.codigo)
-      .sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
-
-    let proximaReal: string
-    if (ultimaEj) {
-      proximaReal = calcularProximaFecha(ultimaEj.fecha, p.frecuencia)
-    } else {
-      proximaReal = getProximaFecha(p)
-    }
-
-    const d = new Date(proximaReal)
-    let fechas: string[] = []
-
-    if (d.getMonth() === calMes && d.getFullYear() === calAnio) {
-      fechas = [proximaReal]
-    } else if (d < hoy && calMes === hoy.getMonth() && calAnio === hoy.getFullYear()) {
-      // Solo mostrar vencidas en el mes actual
-      const ultimoDiaMes = new Date(calAnio, calMes + 1, 0).getDate()
-      const dia = Math.min(d.getDate(), ultimoDiaMes)
-      fechas = [`${calAnio}-${String(calMes + 1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`]
-    }
-
-    fechas.forEach(f => {
-      const dia = new Date(f).getDate()
-      const est = estadoMes(p, [f])
-      const col = est === 'realizada' ? '#16a34a' : est === 'vencida' ? '#dc2626' : '#f59e0b'
-      if (!diasConPlanilla[dia]) diasConPlanilla[dia] = []
-      diasConPlanilla[dia].push({ codigo: p.codigo, nombre: p.nombre, color: col, estado: est })
+    // Primero buscar ejecución real en el mes
+    const ejEnMes = ejecuciones.find(e => {
+      const d = new Date(e.fecha)
+      return e.planilla_id === p.codigo && d.getMonth() === calMes && d.getFullYear() === calAnio
     })
+
+    let fechaRef: string | null = ejEnMes ? ejEnMes.fecha : null
+
+    if (!fechaRef) {
+      // Sin ejecución: calcular si corresponde en este mes
+      const ultimaEj = ejecuciones
+        .filter(e => e.planilla_id === p.codigo)
+        .sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
+
+      if (ultimaEj) {
+        fechaRef = getFechaEnMes(p, calMes, calAnio)
+      } else if (calMes === hoy.getMonth() && calAnio === hoy.getFullYear()) {
+        // Sin ejecuciones y es el mes actual: mostrar con getProximaFecha
+        const px = getProximaFecha(p)
+        const d = new Date(px)
+        if (d.getMonth() === calMes && d.getFullYear() === calAnio) fechaRef = px
+      }
+    }
+
+    if (!fechaRef) return
+
+    const dia = new Date(fechaRef).getDate()
+    const est = estadoMes(p, [fechaRef])
+    const col = est === 'realizada' ? '#16a34a' : est === 'vencida' ? '#dc2626' : '#f59e0b'
+    if (!diasConPlanilla[dia]) diasConPlanilla[dia] = []
+    diasConPlanilla[dia].push({ codigo: p.codigo, nombre: p.nombre, color: col, estado: est })
   })
 
   const diasDelMes = new Date(calAnio, calMes + 1, 0).getDate()

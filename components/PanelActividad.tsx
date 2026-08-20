@@ -335,20 +335,19 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     try {
       const nombreArchivo = `${carpeta}/${Date.now()}-${idx}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
 
-      // Timeout de 20 segundos — si Supabase no responde, usamos fallback base64
       const uploadPromise = supabase.storage
         .from('planillas-firmadas')
         .upload(nombreArchivo, file, { upsert: true })
 
       const timeoutPromise = new Promise<{ data: null; error: Error }>(resolve =>
-        setTimeout(() => resolve({ data: null, error: new Error('Timeout') }), 20000)
+        setTimeout(() => resolve({ data: null, error: new Error('Timeout — el archivo tardó demasiado, probá con mejor conexión') }), 60000)
       )
 
       const { error } = await Promise.race([uploadPromise, timeoutPromise])
       if (error) {
-        const msg = JSON.stringify(error)
+        const msg = error instanceof Error ? error.message : (error as {message?:string})?.message ?? JSON.stringify(error)
         console.error('Supabase upload error:', msg)
-        setErrorGuardar(`Error upload: ${msg}`)
+        setErrorGuardar(`⚠️ Error al subir: ${msg}`)
         return null
       }
       const { data: urlData } = supabase.storage

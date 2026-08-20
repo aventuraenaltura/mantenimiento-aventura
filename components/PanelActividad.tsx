@@ -980,7 +980,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
               {Array.from({ length: primerDia }).map((_, i) => <div key={`e-${i}`} />)}
               {Array.from({ length: diasDelMes }, (_, i) => i + 1).map(dia => {
                 const items = diasConPlanilla[dia] ?? []
-                const esHoy = dia === hoy.getDate()
+                const esHoy = dia === hoy.getDate() && calMes === hoy.getMonth() && calAnio === hoy.getFullYear()
                 const tienePlanillas = items.length > 0
                 return (
                   <div key={dia}

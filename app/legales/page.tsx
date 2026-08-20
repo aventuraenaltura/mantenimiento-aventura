@@ -93,6 +93,7 @@ export default function LegalesPage() {
   const [docs, setDocs] = useState<Record<string, Archivo[]>>({})
   const [subiendo, setSubiendo] = useState<string | null>(null)
   const [editandoVenc, setEditandoVenc] = useState<{ secId: string; archivoId: string; valor: string } | null>(null)
+  const [editandoNombre, setEditandoNombre] = useState<{ secId: string; archivoId: string; valor: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -163,6 +164,19 @@ export default function LegalesPage() {
     await supabase.from('legales_docs').delete().eq('id', archivoId)
     const actuales = docs[seccionId] ?? []
     guardarDocs({ ...docs, [seccionId]: actuales.filter(a => a.id !== archivoId) })
+  }
+
+  async function guardarNombre() {
+    if (!editandoNombre) return
+    const { secId, archivoId, valor } = editandoNombre
+    if (!valor.trim()) return
+    await supabase.from('legales_docs').update({ nombre: valor.trim() }).eq('id', archivoId)
+    const actuales = docs[secId] ?? []
+    guardarDocs({
+      ...docs,
+      [secId]: actuales.map(a => a.id === archivoId ? { ...a, nombre: valor.trim() } : a),
+    })
+    setEditandoNombre(null)
   }
 
   async function guardarVencimiento() {
@@ -262,10 +276,26 @@ export default function LegalesPage() {
                           {arch.nombre.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? '🖼️' : '📄'}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <a href={arch.url} target="_blank" rel="noreferrer"
-                            className="text-sm font-semibold text-blue-600 hover:underline truncate block">
-                            {arch.nombre}
-                          </a>
+                          {editandoNombre?.secId === sec.id && editandoNombre?.archivoId === arch.id ? (
+                            <div className="flex items-center gap-2 mt-1">
+                              <input autoFocus value={editandoNombre.valor}
+                                onChange={e => setEditandoNombre(n => n ? { ...n, valor: e.target.value } : null)}
+                                onKeyDown={e => { if (e.key === 'Enter') guardarNombre(); if (e.key === 'Escape') setEditandoNombre(null) }}
+                                className="flex-1 border rounded-lg px-2 py-1 text-xs focus:outline-none"
+                                style={{ border: '1px solid #d1d5db' }} />
+                              <button onClick={guardarNombre} className="text-xs px-2 py-1 rounded-lg text-white" style={{ background: '#1e3a3a' }}>OK</button>
+                              <button onClick={() => setEditandoNombre(null)} className="text-xs text-gray-400">✕</button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <a href={arch.url} target="_blank" rel="noreferrer"
+                                className="text-sm font-semibold text-blue-600 hover:underline truncate">
+                                {arch.nombre}
+                              </a>
+                              <button onClick={() => setEditandoNombre({ secId: sec.id, archivoId: arch.id, valor: arch.nombre })}
+                                className="text-gray-400 hover:text-gray-600 text-xs flex-shrink-0" title="Renombrar">✏️</button>
+                            </div>
+                          )}
                           <p style={{ fontSize: 11, color: '#a0aec0' }}>Cargado: {fmtFecha(arch.fecha_carga)}</p>
 
                           {/* Vencimiento */}

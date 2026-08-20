@@ -43,6 +43,8 @@ interface Props {
 function colorEstadoFecha(proximaFecha: string): 'rojo' | 'naranja' | 'verde' {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
+  const [calMes, setCalMes] = useState(hoy.getMonth())
+  const [calAnio, setCalAnio] = useState(hoy.getFullYear())
   const proxima = new Date(proximaFecha)
   const diff = (proxima.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24)
   if (diff < 0) return 'rojo'
@@ -308,15 +310,13 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     return base.toISOString().split('T')[0]
   }
 
-  // Planillas programadas para el mes actual
+  // Planillas programadas para el mes seleccionado
   function getPlanillasMes() {
-    const mes = hoy.getMonth()
-    const anio = hoy.getFullYear()
     const resultado: { planilla: Planilla; fechas: string[] }[] = []
     planillas.forEach(p => {
       const proxima = getProximaFecha(p)
       const d = new Date(proxima)
-      if (d.getMonth() === mes && d.getFullYear() === anio) {
+      if (d.getMonth() === calMes && d.getFullYear() === calAnio) {
         resultado.push({ planilla: p, fechas: [proxima] })
       }
     })
@@ -513,16 +513,15 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     }
 
     const d = new Date(proximaReal)
-    const mesActualIdx = hoy.getMonth()
-    const anioActual = hoy.getFullYear()
     let fechas: string[] = []
 
-    if (d.getMonth() === mesActualIdx && d.getFullYear() === anioActual) {
+    if (d.getMonth() === calMes && d.getFullYear() === calAnio) {
       fechas = [proximaReal]
-    } else if (d < hoy) {
-      const ultimoDiaMes = new Date(anioActual, mesActualIdx + 1, 0).getDate()
+    } else if (d < hoy && calMes === hoy.getMonth() && calAnio === hoy.getFullYear()) {
+      // Solo mostrar vencidas en el mes actual
+      const ultimoDiaMes = new Date(calAnio, calMes + 1, 0).getDate()
       const dia = Math.min(d.getDate(), ultimoDiaMes)
-      fechas = [`${anioActual}-${String(mesActualIdx + 1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`]
+      fechas = [`${calAnio}-${String(calMes + 1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`]
     }
 
     fechas.forEach(f => {
@@ -534,8 +533,8 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     })
   })
 
-  const diasDelMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate()
-  const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).getDay()
+  const diasDelMes = new Date(calAnio, calMes + 1, 0).getDate()
+  const primerDia = new Date(calAnio, calMes, 1).getDay()
 
   const estilosEstado: Record<string, React.CSSProperties> = {
     rojo:    { background: '#dc2626', color: 'white', border: 'none' },
@@ -584,7 +583,34 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#555', marginBottom: 2 }}>AVENTURA EN ALTURA — PTATANKA SRL</div>
                 <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: 1 }}>PLAN DE MANTENIMIENTO — {nombre.toUpperCase()}</div>
-                <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>{MESES[hoy.getMonth()].toUpperCase()} {hoy.getFullYear()}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => {
+                      const d = new Date(calAnio, calMes - 1, 1)
+                      setCalMes(d.getMonth()); setCalAnio(d.getFullYear())
+                    }} className="text-gray-400 hover:text-gray-700 px-1">‹</button>
+                    <select value={`${calAnio}-${calMes}`}
+                      onChange={e => { const [a,m] = e.target.value.split('-'); setCalAnio(Number(a)); setCalMes(Number(m)) }}
+                      className="text-sm font-bold bg-transparent focus:outline-none cursor-pointer">
+                      {Array.from({ length: 24 }, (_, i) => {
+                        const d = new Date(hoy.getFullYear(), hoy.getMonth() - 12 + i, 1)
+                        return (
+                          <option key={i} value={`${d.getFullYear()}-${d.getMonth()}`}>
+                            {MESES[d.getMonth()]} {d.getFullYear()}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    <button onClick={() => {
+                      const d = new Date(calAnio, calMes + 1, 1)
+                      setCalMes(d.getMonth()); setCalAnio(d.getFullYear())
+                    }} className="text-gray-400 hover:text-gray-700 px-1">›</button>
+                    {(calMes !== hoy.getMonth() || calAnio !== hoy.getFullYear()) && (
+                      <button onClick={() => { setCalMes(hoy.getMonth()); setCalAnio(hoy.getFullYear()) }}
+                        className="text-xs text-blue-500 hover:underline ml-1">Hoy</button>
+                    )}
+                  </div>
+                </div>
               </div>
               <div style={{ textAlign: 'right', fontSize: 11, color: '#555' }}>
                 <div>Generado: {new Date().toLocaleDateString('es-AR')}</div>
@@ -724,11 +750,9 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
 
   // Determinar estado de una planilla del mes: realizada / para realizar / vencida
   function estadoMes(p: Planilla, fechas: string[]): 'realizada' | 'para_realizar' | 'vencida' {
-    const mesActual = hoy.getMonth()
-    const anioActual = hoy.getFullYear()
     const realizada = ejecuciones.some(e => {
       const d = new Date(e.fecha)
-      return e.planilla_id === p.codigo && d.getMonth() === mesActual && d.getFullYear() === anioActual
+      return e.planilla_id === p.codigo && d.getMonth() === calMes && d.getFullYear() === calAnio
     })
     if (realizada) return 'realizada'
     const todasPasadas = fechas.every(f => new Date(f) < hoy)
@@ -814,7 +838,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
           <div className="panel rounded-2xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="font-bold text-gray-800">Mantenimientos de {MESES[hoy.getMonth()]}</h2>
+                <h2 className="font-bold text-gray-800">Mantenimientos de {MESES[calMes]}</h2>
                 <p className="text-xs text-gray-400 mt-0.5">Planillas programadas para este mes</p>
               </div>
               <button onClick={() => setMostrarPDFMes(true)}
@@ -871,7 +895,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
 
           {/* Calendario */}
           <div className="panel rounded-2xl border border-gray-200 p-5">
-            <h3 className="font-bold text-gray-800 mb-3">{MESES[hoy.getMonth()]} {hoy.getFullYear()}</h3>
+            <h3 className="font-bold text-gray-800 mb-3">{MESES[calMes]} {calAnio}</h3>
             {/* Cabecera días semana */}
             <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold mb-1" style={{ color: '#9ca3af' }}>
               {['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map(d => <div key={d}>{d}</div>)}

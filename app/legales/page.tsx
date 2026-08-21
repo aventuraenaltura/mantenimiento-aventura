@@ -90,6 +90,7 @@ function estadoVencimiento(dias: number | null): 'vencido' | 'proximo' | 'ok' | 
 export default function LegalesPage() {
   const router = useRouter()
   const [autorizado, setAutorizado] = useState(false)
+  const [esAdminLegales, setEsAdminLegales] = useState(false)
   const [docs, setDocs] = useState<Record<string, Archivo[]>>({})
   const [subiendo, setSubiendo] = useState<string | null>(null)
   const [editandoVenc, setEditandoVenc] = useState<{ secId: string; archivoId: string; valor: string } | null>(null)
@@ -100,8 +101,10 @@ export default function LegalesPage() {
     const u = localStorage.getItem('usuario')
     if (!u) { router.push('/'); return }
     const usuario = JSON.parse(u)
-    if (usuario.rol !== 'admin') { router.push('/home'); return }
+    if (usuario.rol !== 'admin' && usuario.rol !== 'colaborador') { router.push('/home'); return }
     setAutorizado(true)
+    const esAdminLocal = usuario.rol === 'admin'
+    setEsAdminLegales(esAdminLocal)
     // Cargar desde Supabase
     supabase.from('legales_docs').select('*').then(({ data }) => {
       if (data && data.length > 0) {
@@ -292,15 +295,15 @@ export default function LegalesPage() {
                                 className="text-sm font-semibold text-blue-600 hover:underline truncate">
                                 {arch.nombre}
                               </a>
-                              <button onClick={() => setEditandoNombre({ secId: sec.id, archivoId: arch.id, valor: arch.nombre })}
-                                className="text-gray-400 hover:text-gray-600 text-xs flex-shrink-0" title="Renombrar">✏️</button>
+                              {esAdminLegales && <button onClick={() => setEditandoNombre({ secId: sec.id, archivoId: arch.id, valor: arch.nombre })}
+                                className="text-gray-400 hover:text-gray-600 text-xs flex-shrink-0" title="Renombrar">✏️</button>}
                             </div>
                           )}
                           <p style={{ fontSize: 11, color: '#a0aec0' }}>Cargado: {fmtFecha(arch.fecha_carga)}</p>
 
                           {/* Vencimiento */}
                           {sec.tieneVencimiento && (
-                            editandoVenc?.secId === sec.id && editandoVenc?.archivoId === arch.id ? (
+                            esAdminLegales && editandoVenc?.secId === sec.id && editandoVenc?.archivoId === arch.id ? (
                               <div className="flex items-center gap-2 mt-1.5">
                                 <input type="date" value={editandoVenc.valor}
                                   onChange={e => setEditandoVenc(ev => ev ? { ...ev, valor: e.target.value } : null)}
@@ -313,22 +316,21 @@ export default function LegalesPage() {
                                 <button onClick={() => setEditandoVenc(null)} className="text-xs text-gray-400">✕</button>
                               </div>
                             ) : (
-                              <button onClick={() => setEditandoVenc({ secId: sec.id, archivoId: arch.id, valor: arch.fecha_vencimiento ?? '' })}
-                                className="mt-1 text-xs flex items-center gap-1">
-                                <span className={`px-2 py-0.5 rounded-lg font-medium ${
-                                  estado === 'vencido' ? 'bg-red-100 text-red-600' :
-                                  estado === 'proximo' ? 'bg-orange-100 text-orange-600' :
-                                  estado === 'ok' ? 'bg-green-100 text-green-700' :
-                                  'bg-gray-100 text-gray-500'
-                                }`}>
-                                  {arch.fecha_vencimiento ? `Vence: ${fmtFecha(arch.fecha_vencimiento)}${dias !== null && dias >= 0 ? ` (${dias}d)` : ' — VENCIDO'}` : '+ Agregar vencimiento'}
-                                </span>
-                              </button>
+                              <span className={`mt-1 text-xs px-2 py-0.5 rounded-lg font-medium inline-block ${
+                                estado === 'vencido' ? 'bg-red-100 text-red-600' :
+                                estado === 'proximo' ? 'bg-orange-100 text-orange-600' :
+                                estado === 'ok' ? 'bg-green-100 text-green-700' :
+                                'bg-gray-100 text-gray-500'
+                              }`}
+                              onClick={() => esAdminLegales && setEditandoVenc({ secId: sec.id, archivoId: arch.id, valor: arch.fecha_vencimiento ?? '' })}
+                              style={{ cursor: esAdminLegales ? 'pointer' : 'default' }}>
+                                {arch.fecha_vencimiento ? `Vence: ${fmtFecha(arch.fecha_vencimiento)}${dias !== null && dias >= 0 ? ` (${dias}d)` : ' — VENCIDO'}` : esAdminLegales ? '+ Agregar vencimiento' : ''}
+                              </span>
                             )
                           )}
                         </div>
-                        <button onClick={() => borrarArchivo(sec.id, arch.id)}
-                          className="text-red-400 hover:text-red-600 text-sm flex-shrink-0">🗑️</button>
+                        {esAdminLegales && <button onClick={() => borrarArchivo(sec.id, arch.id)}
+                          className="text-red-400 hover:text-red-600 text-sm flex-shrink-0">🗑️</button>}
                       </div>
                     )
                   })}
@@ -336,7 +338,7 @@ export default function LegalesPage() {
               )}
 
               {/* Subir */}
-              {(sec.multiple || archivos.length === 0) && (
+              {(esAdminLegales && (sec.multiple || archivos.length === 0)) && (
                 <label className="flex items-center gap-2 cursor-pointer border-2 border-dashed rounded-xl px-3 py-3 transition-colors"
                   style={{ borderColor: estaSubiendo ? '#9ca3af' : '#d1d5db' }}>
                   <span>{estaSubiendo ? '⏳' : '⬆️'}</span>
@@ -354,7 +356,7 @@ export default function LegalesPage() {
               )}
 
               {/* Reemplazar si no es múltiple y ya tiene archivo */}
-              {!sec.multiple && archivos.length > 0 && (
+              {esAdminLegales && !sec.multiple && archivos.length > 0 && (
                 <label className="flex items-center gap-2 cursor-pointer mt-2"
                   style={{ fontSize: 12, color: '#6b7280' }}>
                   <span>{estaSubiendo ? '⏳' : '🔄'}</span>

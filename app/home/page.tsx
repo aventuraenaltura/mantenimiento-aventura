@@ -284,20 +284,18 @@ export default function HomePage() {
                 <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
               </div>
             </Link>
-            {usuario.rol === 'admin' && (
-              <Link href="/legales">
-                <div className="rounded-2xl p-4 flex items-center gap-3 cursor-pointer"
-                  style={{ background: 'white', border: '1px solid var(--border)' }}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                    style={{ background: 'var(--c-teal-bg)' }}>🏛️</div>
-                  <div className="flex-1 min-w-0">
-                    <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--text-main)' }}>Doc. Legales</p>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Habilitaciones y permisos</p>
-                  </div>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
+            <Link href="/legales">
+              <div className="rounded-2xl p-4 flex items-center gap-3 cursor-pointer"
+                style={{ background: 'white', border: '1px solid var(--border)' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                  style={{ background: 'var(--c-teal-bg)' }}>🏛️</div>
+                <div className="flex-1 min-w-0">
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--text-main)' }}>Doc. Legales</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Habilitaciones y permisos</p>
                 </div>
-              </Link>
-            )}
+                <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
+              </div>
+            </Link>
             {usuario.rol === 'admin' && <ExportarRegistros />}
           </div>
 

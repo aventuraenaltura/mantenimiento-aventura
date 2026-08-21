@@ -112,6 +112,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   const [tabConfig, setTabConfig] = useState<'planilla' | 'tutorial' | 'notas'>('planilla')
   const [formTutorial, setFormTutorial] = useState<{ tipo: 'url' | 'file'; valor: string; urlInput: string }>({ tipo: 'url', valor: '', urlInput: '' })
   const [esAdmin, setEsAdmin] = useState(false)
+  const [esIngeniero, setEsIngeniero] = useState(false)
   const [toastTutorial, setToastTutorial] = useState<string | null>(null)
   const [planillaParaImprimir, setPlanillaParaImprimir] = useState<Planilla | null>(null)
   const [edicionesPlanillas, setEdicionesPlanillas] = useState<Record<string, Partial<Planilla>>>({})
@@ -160,6 +161,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     try {
       const u = JSON.parse(localStorage.getItem('usuario') || '{}')
       setEsAdmin(u.rol === 'admin')
+      setEsIngeniero(u.rol === 'ingeniero')
     } catch {}
   }, [])
 
@@ -1393,7 +1395,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                         📝 Extras
                       </button>
 
-                      {esAdmin && (
+                      {(esAdmin || esIngeniero) && (
                         <button
                           onClick={e => {
                             e.stopPropagation()
@@ -1404,7 +1406,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                           style={configTutorialAbierto === p.codigo
                             ? { background: '#374151', color: 'white' }
                             : { background: '#f3f4f6', color: '#6b7280' }}
-                          title="Configurar (admin)">
+                          title="Configurar">
                           ⚙️
                         </button>
                       )}
@@ -1438,7 +1440,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                             ? anotaciones[p.codigo]
                             : <span style={{ color: '#a0aec0' }}>Sin anotaciones cargadas para esta planilla.</span>}
                         </div>
-                        {esAdmin && (
+                        {(esAdmin || esIngeniero) && (
                           <p className="text-xs mt-1.5 text-right" style={{ color: '#a0aec0' }}>
                             Editá desde ⚙️ Configurar
                           </p>

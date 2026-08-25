@@ -236,22 +236,6 @@ export default function HomePage() {
 
           {usuario.rol === 'admin' && (
             <div className="sm:col-span-2 flex flex-col gap-3">
-              <Link href="/config">
-                <div className="rounded-2xl p-4 sm:p-5 flex items-center gap-4 cursor-pointer"
-                  style={{ background: '#1a202c', color: 'white' }}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                    style={{ background: 'rgba(255,255,255,0.1)' }}>⚙️</div>
-                  <div className="flex-1 min-w-0">
-                    <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 14 }}>
-                      Configuración anual de fechas
-                    </p>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 2 }}>
-                      Calendario de mantenimientos automático
-                    </p>
-                  </div>
-                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 18, flexShrink: 0 }}>→</span>
-                </div>
-              </Link>
               <Link href="/usuarios">
                 <div className="rounded-2xl p-4 sm:p-5 flex items-center gap-4 cursor-pointer"
                   style={{ background: '#4a1d96', color: 'white' }}>

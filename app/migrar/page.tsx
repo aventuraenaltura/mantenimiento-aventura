@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -7,9 +7,18 @@ const ACTIVIDADES = ['tirolesa', 'arqueria', 'parque', 'salon']
 
 export default function MigrarPage() {
   const router = useRouter()
+  const [autorizado, setAutorizado] = useState(false)
   const [log, setLog] = useState<string[]>([])
   const [corriendo, setCorriendo] = useState(false)
   const [listo, setListo] = useState(false)
+
+  useEffect(() => {
+    const u = localStorage.getItem('usuario')
+    if (!u) { router.push('/'); return }
+    const usuario = JSON.parse(u)
+    if (usuario.rol !== 'admin') { router.push('/home'); return }
+    setAutorizado(true)
+  }, [router])
 
   function addLog(msg: string) { setLog(prev => [...prev, msg]) }
 
@@ -17,7 +26,6 @@ export default function MigrarPage() {
     setCorriendo(true); setLog([])
     let total = 0, errores = 0
 
-    // ── EJECUCIONES ──────────────────────────────────────────────────
     addLog('📋 Migrando registros de mantenimiento...')
     for (const act of ACTIVIDADES) {
       try {
@@ -35,7 +43,6 @@ export default function MigrarPage() {
       } catch (e) { addLog(`  ↳ ${act}: ❌ ${e}`); errores++ }
     }
 
-    // ── ANOTACIONES / EXTRAS ─────────────────────────────────────────
     addLog('📝 Migrando extras y anotaciones...')
     for (const act of ACTIVIDADES) {
       try {
@@ -50,7 +57,6 @@ export default function MigrarPage() {
       } catch (e) { addLog(`  ↳ ${act}: ❌ ${e}`); errores++ }
     }
 
-    // ── TUTORIALES ───────────────────────────────────────────────────
     addLog('🎓 Migrando tutoriales...')
     for (const act of ACTIVIDADES) {
       try {
@@ -65,7 +71,6 @@ export default function MigrarPage() {
       } catch (e) { addLog(`  ↳ ${act}: ❌ ${e}`); errores++ }
     }
 
-    // ── EDICIONES DE PLANILLAS ───────────────────────────────────────
     addLog('✏️ Migrando ediciones de planillas...')
     for (const act of ACTIVIDADES) {
       try {
@@ -80,7 +85,6 @@ export default function MigrarPage() {
       } catch (e) { addLog(`  ↳ ${act}: ❌ ${e}`); errores++ }
     }
 
-    // ── DOCUMENTOS LEGALES ───────────────────────────────────────────
     addLog('🏛️ Migrando documentos legales...')
     try {
       const raw = localStorage.getItem('legales_docs_v2')
@@ -100,7 +104,6 @@ export default function MigrarPage() {
       } else addLog('  ↳ Sin datos en este dispositivo')
     } catch (e) { addLog(`  ❌ ${e}`); errores++ }
 
-    // ── LIBRO DEL INGENIERO ──────────────────────────────────────────
     addLog('📖 Migrando libro del ingeniero...')
     try {
       const raw = localStorage.getItem('libro_ingeniero_tirolesa')
@@ -122,15 +125,17 @@ export default function MigrarPage() {
     setCorriendo(false); setListo(true)
   }
 
+  if (!autorizado) return null
+
   return (
     <div className="min-h-screen flex flex-col items-center p-6" style={{ background: '#f7f5f0' }}>
       <div className="w-full max-w-lg">
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h1 style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 22, color: '#1e3a3a', marginBottom: 4 }}>
-            🔄 Migración completa
+            🔄 Migración de datos
           </h1>
           <p className="text-sm text-gray-500 mb-6">
-            Sube <b>todos</b> los datos de este dispositivo a Supabase: registros, extras, tutoriales, ediciones de planillas, legales y fotos del libro.
+            Sube todos los datos de <b>este dispositivo</b> a Supabase. Ejecutalo una vez desde cada dispositivo donde hayas cargado datos antes de la migración.
           </p>
           {!listo ? (
             <button onClick={migrar} disabled={corriendo}

@@ -201,7 +201,28 @@ export default function EquipoTecnicoPage() {
 
       const merged = [...existentes] as Record<string, unknown>[]
       for (const eq of equiposSector) {
-        if (!existentesPorSerie.has(eq.numero_serie)) {
+        const existente = existentesPorSerie.get(eq.numero_serie) as Record<string, unknown> | undefined
+        if (existente) {
+          // Actualizar datos del equipo pero CONSERVAR el historial de reparaciones
+          const idx = merged.findIndex(m => m.numero_serie === eq.numero_serie)
+          if (idx >= 0) {
+            merged[idx] = {
+              ...existente, // mantiene id, historial, controles_stock, etc.
+              // Actualiza datos del Excel
+              tipo: eq.tipo,
+              marca: eq.marca,
+              modelo: eq.modelo,
+              ubicacion: eq.ubicacion,
+              instructor: eq.instructor,
+              uso_actual: eq.uso_actual,
+              comprado: eq.comprado,
+              primer_uso: eq.primer_uso,
+              observaciones: eq.observaciones,
+              caracteristicas: eq.caracteristicas || existente.caracteristicas || '',
+            }
+          }
+        } else {
+          // Equipo nuevo — agregar con historial vacío
           merged.push({
             id: `${sector}_${eq.tipo}_${eq.numero_serie || Date.now()}_${Math.random().toString(36).slice(2,6)}`,
             tipo: eq.tipo,

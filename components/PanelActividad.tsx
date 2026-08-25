@@ -145,17 +145,43 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     const raw = localStorage.getItem(`archivos_originales_${actividadId}`)
     if (raw) setArchivosOriginales(JSON.parse(raw))
 
-    // Cargar anotaciones extras
-    const rawAn = localStorage.getItem(`anotaciones_${actividadId}`)
-    if (rawAn) setAnotaciones(JSON.parse(rawAn))
+    // Cargar anotaciones desde Supabase
+    supabase.from('planilla_extras').select('*').eq('actividad_id', actividadId).then(({ data }) => {
+      if (data && data.length > 0) {
+        const map: Record<string, string> = {}
+        data.forEach((r: { planilla_id: string; anotacion: string }) => { map[r.planilla_id] = r.anotacion })
+        setAnotaciones(map)
+      } else {
+        const rawAn = localStorage.getItem(`anotaciones_${actividadId}`)
+        if (rawAn) setAnotaciones(JSON.parse(rawAn))
+      }
+    })
 
-    // Cargar tutoriales
-    const rawTut = localStorage.getItem(`tutoriales_${actividadId}`)
-    if (rawTut) setTutoriales(JSON.parse(rawTut))
+    // Cargar tutoriales desde Supabase
+    supabase.from('planilla_tutoriales').select('*').eq('actividad_id', actividadId).then(({ data }) => {
+      if (data && data.length > 0) {
+        const map: Record<string, { tipo: 'url' | 'file'; valor: string }> = {}
+        data.forEach((r: { planilla_id: string; tipo: 'url' | 'file'; valor: string }) => {
+          map[r.planilla_id] = { tipo: r.tipo, valor: r.valor }
+        })
+        setTutoriales(map)
+      } else {
+        const rawTut = localStorage.getItem(`tutoriales_${actividadId}`)
+        if (rawTut) setTutoriales(JSON.parse(rawTut))
+      }
+    })
 
-    // Cargar ediciones de planillas
-    const rawEd = localStorage.getItem(`ediciones_planillas_${actividadId}`)
-    if (rawEd) setEdicionesPlanillas(JSON.parse(rawEd))
+    // Cargar ediciones de planillas desde Supabase
+    supabase.from('planilla_ediciones').select('*').eq('actividad_id', actividadId).then(({ data }) => {
+      if (data && data.length > 0) {
+        const map: Record<string, Partial<Planilla>> = {}
+        data.forEach((r: { planilla_id: string; datos: Partial<Planilla> }) => { map[r.planilla_id] = r.datos })
+        setEdicionesPlanillas(map)
+      } else {
+        const rawEd = localStorage.getItem(`ediciones_planillas_${actividadId}`)
+        if (rawEd) setEdicionesPlanillas(JSON.parse(rawEd))
+      }
+    })
 
     // Detectar rol
     try {
@@ -201,7 +227,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     })
   }
 
-  function guardarEdicionPlanilla(codigo: string) {
+  async function guardarEdicionPlanilla(codigo: string) {
     if (!formEdicion) return
     const edicion: Partial<Planilla> = {
       nombre:      formEdicion.nombre.trim(),
@@ -213,37 +239,47 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     }
     const nuevas = { ...edicionesPlanillas, [codigo]: edicion }
     setEdicionesPlanillas(nuevas)
-    localStorage.setItem(`ediciones_planillas_${actividadId}`, JSON.stringify(nuevas))
+    await supabase.from('planilla_ediciones').upsert(
+      { actividad_id: actividadId, planilla_id: codigo, datos: edicion },
+      { onConflict: 'actividad_id,planilla_id' }
+    )
     setFormEdicion(null)
   }
 
-  function resetearPlanilla(codigo: string) {
+  async function resetearPlanilla(codigo: string) {
     const nuevas = { ...edicionesPlanillas }
     delete nuevas[codigo]
     setEdicionesPlanillas(nuevas)
-    localStorage.setItem(`ediciones_planillas_${actividadId}`, JSON.stringify(nuevas))
-    // Reiniciar form con datos originales
+    await supabase.from('planilla_ediciones')
+      .delete().eq('actividad_id', actividadId).eq('planilla_id', codigo)
     const original = planillasBase.find(p => p.codigo === codigo)
     if (original) abrirEdicionPlanilla(original)
   }
 
-  function guardarAnotacion(codigo: string, texto: string) {
+  async function guardarAnotacion(codigo: string, texto: string) {
     const nuevas = { ...anotaciones, [codigo]: texto }
     setAnotaciones(nuevas)
-    localStorage.setItem(`anotaciones_${actividadId}`, JSON.stringify(nuevas))
+    await supabase.from('planilla_extras').upsert(
+      { actividad_id: actividadId, planilla_id: codigo, anotacion: texto },
+      { onConflict: 'actividad_id,planilla_id' }
+    )
   }
 
-  function guardarTutorial(codigo: string, datos: { tipo: 'url' | 'file'; valor: string }) {
+  async function guardarTutorial(codigo: string, datos: { tipo: 'url' | 'file'; valor: string }) {
     const nuevos = { ...tutoriales, [codigo]: datos }
     setTutoriales(nuevos)
-    localStorage.setItem(`tutoriales_${actividadId}`, JSON.stringify(nuevos))
+    await supabase.from('planilla_tutoriales').upsert(
+      { actividad_id: actividadId, planilla_id: codigo, tipo: datos.tipo, valor: datos.valor },
+      { onConflict: 'actividad_id,planilla_id' }
+    )
   }
 
-  function borrarTutorial(codigo: string) {
+  async function borrarTutorial(codigo: string) {
     const nuevos = { ...tutoriales }
     delete nuevos[codigo]
     setTutoriales(nuevos)
-    localStorage.setItem(`tutoriales_${actividadId}`, JSON.stringify(nuevos))
+    await supabase.from('planilla_tutoriales')
+      .delete().eq('actividad_id', actividadId).eq('planilla_id', codigo)
   }
 
   function getYouTubeEmbed(url: string): string | null {

@@ -121,6 +121,18 @@ export default function MigrarPage() {
     } catch (e) { addLog(`  ❌ ${e}`); errores++ }
 
     addLog('')
+    addLog('👤 Migrando usuarios...')
+    try {
+      const raw = localStorage.getItem('usuarios_sistema')
+      if (raw) {
+        const users = JSON.parse(raw) as {id:string;nombre:string;email:string;password:string;rol:string;activo:boolean;creadoEn:string}[]
+        const rows = users.map(u => ({ id: u.id, nombre: u.nombre, email: u.email, password: u.password, rol: u.rol, activo: u.activo, creado_en: u.creadoEn }))
+        const { error } = await supabase.from('usuarios_sistema').upsert(rows, { onConflict: 'id' })
+        if (error) { addLog(`  ❌ ${error.message}`); errores++ }
+        else { addLog(`  ✅ ${rows.length} usuarios migrados`); total += rows.length }
+      } else addLog('  ↳ Sin datos en este dispositivo')
+    } catch (e) { addLog(`  ❌ ${e}`); errores++ }
+
     addLog(`✅ Fin: ${total} elementos migrados${errores > 0 ? `, ${errores} errores` : ' sin errores'}`)
     setCorriendo(false); setListo(true)
   }

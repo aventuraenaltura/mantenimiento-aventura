@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { loginUsuario } from '@/lib/usuarios'
+import { loginUsuarioAsync } from '@/lib/usuarios'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -16,7 +16,7 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const sesion = loginUsuario(email, password)
+    const sesion = await loginUsuarioAsync(email, password)
     if (sesion) {
       localStorage.setItem('usuario', JSON.stringify(sesion))
       router.push('/home')

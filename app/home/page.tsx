@@ -156,7 +156,23 @@ export default function HomePage() {
       {/* ── CONTENIDO PRINCIPAL ── */}
       <main className="max-w-5xl mx-auto px-4 py-6 sm:px-6 sm:py-10">
 
-        {/* Actividades */}
+        {/* Bitácora — acceso rápido */}
+        <Link href="/bitacora">
+          <div className="rounded-2xl p-4 flex items-center gap-4 cursor-pointer"
+            style={{ background: '#1e3a3a', color: 'white' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+              style={{ background: 'rgba(255,255,255,0.1)' }}>📓</div>
+            <div className="flex-1 min-w-0">
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 15 }}>
+                Bitácora de Mantenimiento
+              </p>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
+                Registros · Pendientes · Pedidos de materiales
+              </p>
+            </div>
+            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 20 }}>→</span>
+          </div>
+        </Link>
         <div className="mb-8 sm:mb-10">
           <p className="section-label mb-1">ACTIVIDADES</p>
           <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 'clamp(18px, 4vw, 26px)', fontWeight: 800, color: 'var(--text-main)' }}>

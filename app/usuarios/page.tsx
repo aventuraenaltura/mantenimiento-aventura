@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getUsuariosAsync, saveUsuarios, type Usuario, type Rol } from '@/lib/usuarios'
+import { getUsuariosAsync, saveUsuarios, getSesion, type Usuario, type Rol } from '@/lib/usuarios'
 
 const ROL_INFO: Record<Rol, { label: string; color: string; desc: string }> = {
   admin:       { label: 'Admin',        color: '#0d9e96', desc: 'Acceso total: usuarios, stock inicial, configuración' },

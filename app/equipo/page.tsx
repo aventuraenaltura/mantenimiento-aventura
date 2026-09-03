@@ -310,6 +310,10 @@ export default function EquipoPage() {
         setImportLog(l => [...l, '🏹 Procesando arcos...'])
         const rows: unknown[][] = XLSX.utils.sheet_to_json(shArc, { header: 1, defval: '' })
         const { row: hRow, map } = buildColMap(rows, ['modelo', 'marca'])
+        setImportLog(l => [...l, `  DEBUG arcos hRow=${hRow} map=${JSON.stringify(map)}`])
+        setImportLog(l => [...l, `  DEBUG row0=${JSON.stringify(rows[0])}`])
+        setImportLog(l => [...l, `  DEBUG row2=${JSON.stringify(rows[2])}`])
+        setImportLog(l => [...l, `  DEBUG row3=${JSON.stringify(rows[3])}`])
         const iModelo = map['modelo '] ?? map['modelo'] ?? 0
         const iMarca  = map['marca'] ?? 1
         const iDureza = map['dureza'] ?? 2

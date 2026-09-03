@@ -200,53 +200,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Gestión */}
-        <div className="mb-8 sm:mb-10">
-          <p className="section-label mb-1">GESTIÓN</p>
-          <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 'clamp(18px, 4vw, 26px)', fontWeight: 800, color: 'var(--text-main)' }}>
-            Panel de equipos y stock
-          </h2>
-          <span className="heading-line" />
-
-          <div className="flex flex-col sm:grid sm:grid-cols-3 gap-3 mt-4 sm:gap-4 sm:mt-6">
-            {/* Equipo técnico */}
-            <Link href="/equipo-tecnico" className="sm:col-span-2">
-              <div className="rounded-2xl p-5 flex items-center gap-4 cursor-pointer"
-                style={{ background: 'var(--c-teal)', boxShadow: '0 4px 18px rgba(13,158,150,0.3)' }}>
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
-                  style={{ background: 'rgba(255,255,255,0.2)' }}>🎽</div>
-                <div className="flex-1 min-w-0">
-                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 17, fontWeight: 800, color: 'white', lineHeight: 1.2 }}>
-                    Equipo Técnico
-                  </p>
-                  <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 3 }}>
-                    Stock de arneses, poleas y accesorios
-                  </p>
-                </div>
-                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 20, flexShrink: 0 }}>→</span>
-              </div>
-            </Link>
-
-            {/* Fichas */}
-            <Link href="/fichas">
-              <div className="rounded-2xl p-5 flex items-center gap-4 sm:flex-col sm:items-start sm:justify-between cursor-pointer"
-                style={{ background: 'var(--c-yellow)', boxShadow: '0 4px 18px rgba(245,200,0,0.25)', minHeight: 90 }}>
-                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
-                  style={{ background: 'rgba(0,0,0,0.08)' }}>📋</div>
-                <div className="flex-1 sm:flex-none">
-                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 15, fontWeight: 800, color: '#1a1a1a' }}>
-                    Fichas de equipo
-                  </p>
-                  <p style={{ color: 'rgba(0,0,0,0.55)', fontSize: 12, marginTop: 2 }}>
-                    Historial por equipo
-                  </p>
-                </div>
-                <span className="sm:hidden" style={{ color: 'rgba(0,0,0,0.3)', fontSize: 20 }}>→</span>
-              </div>
-            </Link>
-          </div>
-        </div>
-
         {/* Config + Accesos */}
         <div className="flex flex-col sm:grid sm:grid-cols-3 gap-3 sm:gap-4">
 

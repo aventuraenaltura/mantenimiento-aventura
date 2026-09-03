@@ -612,13 +612,13 @@ export default function EquipoPage() {
                             { campo: 'reparar' as const, label: 'Reparar', color: '#dc2626' },
                           ].map(({ campo, label, color }) => (
                             <div key={campo} className="text-center">
-                              <p style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, marginBottom: 2 }}>{label}</p>
-                              <div className="flex items-center justify-center gap-1">
+                              <p style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, marginBottom: 4 }}>{label}</p>
+                              <div className="flex items-center justify-center gap-2">
                                 <button onClick={() => actualizarStock(s.id, campo, Math.max(0, s[campo] - 1))}
-                                  className="w-6 h-6 rounded-full text-gray-400 hover:text-gray-600 text-sm font-bold" style={{ background: '#f3f4f6' }}>−</button>
-                                <span style={{ fontSize: 16, fontWeight: 800, color, minWidth: 24, textAlign: 'center' }}>{s[campo]}</span>
+                                  className="w-8 h-8 rounded-full text-gray-500 hover:text-gray-700 text-lg font-bold flex items-center justify-center" style={{ background: '#f3f4f6' }}>−</button>
+                                <span style={{ fontSize: 32, fontWeight: 900, color, minWidth: 40, textAlign: 'center', lineHeight: 1 }}>{s[campo]}</span>
                                 <button onClick={() => actualizarStock(s.id, campo, s[campo] + 1)}
-                                  className="w-6 h-6 rounded-full text-gray-400 hover:text-gray-600 text-sm font-bold" style={{ background: '#f3f4f6' }}>+</button>
+                                  className="w-8 h-8 rounded-full text-gray-500 hover:text-gray-700 text-lg font-bold flex items-center justify-center" style={{ background: '#f3f4f6' }}>+</button>
                               </div>
                             </div>
                           ))}

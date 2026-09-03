@@ -180,7 +180,21 @@ export default function HomePage() {
           </h2>
           <span className="heading-line" />
 
-          <div className="grid grid-cols-2 gap-3 mt-4 sm:gap-4 sm:mt-6">
+          {/* Control de Equipo */}
+          <Link href="/equipo">
+            <div className="rounded-2xl p-4 flex items-center gap-4 cursor-pointer mt-4 mb-3"
+              style={{ background: 'white', border: '1px solid var(--border)' }}>
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                style={{ background: '#f0fdf4' }}>🎽</div>
+              <div className="flex-1 min-w-0">
+                <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 14, color: 'var(--text-main)' }}>Control de Equipo</p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Fichas · Stock · Reparaciones</p>
+              </div>
+              <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
+            </div>
+          </Link>
+
+          <div className="grid grid-cols-2 gap-3 mt-1 sm:gap-4">
             {actividades.map(act => (
               <Link key={act.slug} href={`/${act.slug}`}>
                 <div className="relative rounded-2xl overflow-hidden cursor-pointer transition-all active:scale-95 sm:hover:scale-[1.02] sm:hover:shadow-xl"

@@ -298,7 +298,7 @@ export default function EquipoPage() {
           const amb = Number(r[7]) || 0
           const dep = Number(r[8]) || 0
           const enUso = (typeof r[9] === 'number') ? r[9] : 0
-          stockNuevo.push({ categoria: 'arco', nombre: `${modelo} ${dureza}`.trim(), marca, descripcion: `${uso} — Derecho:${der} Zurdo:${zur} Ambidiestro:${amb}`, en_uso: enUso > 0 ? enUso : der + zur + amb, deposito: dep, reparar: 0, baja: 0 })
+          stockNuevo.push({ categoria: 'arco', nombre: `${modelo} ${dureza} — ${uso}`.trim(), marca, descripcion: `Derecho:${der} Zurdo:${zur} Ambidiestro:${amb}`, en_uso: enUso > 0 ? enUso : der + zur + amb, deposito: dep, reparar: 0, baja: 0 })
         }
       }
 

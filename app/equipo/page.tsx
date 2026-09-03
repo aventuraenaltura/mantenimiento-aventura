@@ -433,7 +433,7 @@ export default function EquipoPage() {
       {/* Tabs */}
       <div className="max-w-3xl mx-auto px-4 pt-4">
         <div className="flex rounded-2xl overflow-hidden border border-gray-200 bg-white">
-          {([['fichas','🎽 Fichas'],['stock','📦 Stock'],['reparaciones','🔴 Reparaciones'],['importar','📥 Importar']] as const).map(([id,label])=>(
+          {([['fichas','🎽 Fichas'],['control','📋 Control Stock'],['stock','📦 Varios'],['reparaciones','🔴 Reparaciones'],['importar','📥 Importar']] as const).map(([id,label])=>(
             <button key={id} onClick={()=>setTab(id)}
               className="flex-1 py-2.5 text-xs font-bold"
               style={{ background: tab===id ? '#1e3a3a' : 'white', color: tab===id ? 'white' : '#6b7280' }}>
@@ -444,6 +444,104 @@ export default function EquipoPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-4 space-y-3">
+
+        {/* ══ CONTROL STOCK ═══════════════════════════════════════════ */}
+        {tab === 'control' && !fichaSeleccionada && (
+          <>
+            {(['arnes', 'polea'] as const).map(tipo => {
+              const items = fichas.filter(f => f.tipo === tipo)
+              if (items.length === 0) return null
+              const titulo = tipo === 'arnes' ? '🎽 Arneses' : '🛞 Poleas'
+              // Agrupar por sector
+              const sectores = [...new Set(items.map(f => f.sector || 'general'))].sort()
+              return (
+                <div key={tipo}>
+                  <div className="flex items-center justify-between mb-2">
+                    <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 14, color: '#1c2533' }}>{titulo}</p>
+                    <p className="text-xs text-gray-400">{items.length} equipos</p>
+                  </div>
+                  {sectores.map(sector => {
+                    const equiposSector = items.filter(f => (f.sector || 'general') === sector)
+                    return (
+                      <div key={sector} className="mb-4">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 px-1 capitalize">{sector}</p>
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                          {equiposSector.map((f, idx) => {
+                            const ec = ESTADO_CONFIG[f.estado] ?? ESTADO_CONFIG.deposito
+                            return (
+                              <button key={f.id} onClick={() => { abrirFicha(f); setTab('fichas') }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                                style={{ borderBottom: idx < equiposSector.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ec.dot }} />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-mono text-gray-400 w-6 flex-shrink-0">#{f.numero_interno || '—'}</span>
+                                    <span className="text-sm font-semibold text-gray-800 truncate">{f.marca} {f.modelo}</span>
+                                  </div>
+                                  <div className="flex gap-3 text-xs text-gray-400 mt-0.5 pl-8">
+                                    <span>Serie: {f.numero_serie || '—'}</span>
+                                    {f.instructor && <span className="text-blue-500">👤 {f.instructor}</span>}
+                                  </div>
+                                </div>
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-lg flex-shrink-0"
+                                  style={{ background: ec.bg, color: ec.color }}>{ec.label}</span>
+                                <span className="text-gray-300 text-sm flex-shrink-0">›</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+
+            {/* Varios — solo stock cantidad, sin ficha individual */}
+            {stock.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 14, color: '#1c2533' }}>📦 Varios (stock)</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  {stock.map((s, idx) => (
+                    <div key={s.id} className="flex items-center gap-3 px-4 py-3"
+                      style={{ borderBottom: idx < stock.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800">{s.nombre}</p>
+                        {s.marca && <p className="text-xs text-gray-400">{s.marca}</p>}
+                      </div>
+                      <div className="flex gap-4 text-center flex-shrink-0">
+                        <div>
+                          <p style={{ fontSize: 16, fontWeight: 800, color: '#16a34a' }}>{s.en_uso}</p>
+                          <p style={{ fontSize: 9, color: '#9ca3af' }}>En uso</p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 16, fontWeight: 800, color: '#d97706' }}>{s.deposito}</p>
+                          <p style={{ fontSize: 9, color: '#9ca3af' }}>Depósito</p>
+                        </div>
+                        {s.reparar > 0 && (
+                          <div>
+                            <p style={{ fontSize: 16, fontWeight: 800, color: '#dc2626' }}>{s.reparar}</p>
+                            <p style={{ fontSize: 9, color: '#9ca3af' }}>Reparar</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {fichas.length === 0 && (
+              <div className="bg-white rounded-2xl p-8 text-center border border-gray-200">
+                <p className="text-3xl mb-2">📭</p>
+                <p className="text-sm text-gray-400">Importá el Excel primero</p>
+                <button onClick={()=>setTab('importar')} className="mt-3 text-sm text-blue-500 hover:underline">→ Ir a Importar</button>
+              </div>
+            )}
+          </>
+        )}
 
         {/* ══ FICHAS ══════════════════════════════════════════════════ */}
         {tab === 'fichas' && !fichaSeleccionada && (

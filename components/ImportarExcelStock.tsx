@@ -98,60 +98,82 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
 
       const resultado: EquipoImportado[] = []
       const resultadoVarios: ItemVarios[] = []
-      let fechaArchivo = ''
+      let fechaArchivo = new Date().toLocaleDateString('es-AR')
 
-      // --- ARNESES (hoja 'stock arneses', datos desde índice 3) ---
+      // Helper: normalizar UBIC → ubicacion + instructor
+      function parseUbic(ubic: string, juego: string, uso: string): { ubicacion: EquipoImportado['ubicacion']; instructor: string } {
+        const u = String(ubic || '').trim()
+        const j = String(juego || '').trim().toUpperCase()
+        const us = String(uso || '').trim().toUpperCase()
+        if (us === 'NO') return { ubicacion: 'baja', instructor: '' }
+        if (j === 'REPARAR') return { ubicacion: 'para_reparar', instructor: u }
+        if (['EU', 'eu', 'E.U.'].includes(u) || u.toLowerCase() === 'eu') return { ubicacion: 'en_uso', instructor: '' }
+        if (['DEP', 'dep', 'D', 'd'].includes(u)) return { ubicacion: 'deposito', instructor: '' }
+        if (u === '') return { ubicacion: 'deposito', instructor: '' }
+        // Es un nombre de instructor → en uso
+        return { ubicacion: 'en_uso', instructor: u }
+      }
+
+      function sectorDeJuego(juego: string): string {
+        const j = String(juego || '').trim().toUpperCase()
+        if (j.includes('PARQUE') || j.includes('AEREO') || j.includes('AÉREO')) return 'parque'
+        if (j.includes('TIRO')) return 'tirolesa'
+        if (j.includes('INSTR')) return 'tirolesa'
+        if (j.includes('REP')) return 'tirolesa'
+        if (j.includes('DEP')) return 'tirolesa'
+        return 'tirolesa'
+      }
+
+      // --- ARNESES (hoja 'stock arneses', datos desde fila 3 = índice 2) ---
+      // A: nro_interno, B: marca, C: modelo, D: JUEGO, E: serie, F: ingreso, G: USO, H: UBIC, I: OBS
       const sheetArn = wb.Sheets['stock arneses']
       if (sheetArn) {
         const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetArn, { header: 1, defval: '' })
-        const fechaRaw = rows[1]?.[5]
-        if (fechaRaw instanceof Date) fechaArchivo = fechaRaw.toLocaleDateString('es-AR')
-        else if (fechaRaw) fechaArchivo = String(fechaRaw)
-
-        for (let i = 3; i < rows.length; i++) {
+        for (let i = 2; i < rows.length; i++) {
           const r = rows[i] as unknown[]
-          const tipo = String(r[2] || '').trim()
-          const marca = String(r[3] || '').trim()
-          const modelo = String(r[4] || '').trim()
+          const marca = String(r[1] || '').trim()
+          const modelo = String(r[2] || '').trim()
           if (!marca && !modelo) continue
-          const serie = String(r[5] || '').trim()
-          const sector = normalizarSector(String(r[1] || '').trim())
-          const instrRaw = String(r[7] || '').trim()
-          const statusRaw = String(r[11] || '').trim()
-          const ubicacion = mapUbicacionStatus(statusRaw)
-          const descripcion = String(r[12] || '').trim()
+          const juego = String(r[3] || '').trim()
+          const serie = String(r[4] || '').trim() || String(r[0] || i).trim()
+          const ingreso = String(r[5] || '').trim()
+          const uso = String(r[6] || '').trim()
+          const ubicRaw = String(r[7] || '').trim()
+          const obs = String(r[8] || '').trim()
+          const sector = sectorDeJuego(juego)
+          const { ubicacion, instructor } = parseUbic(ubicRaw, juego, uso)
 
           resultado.push({
-            tipo: tipo.toLowerCase().includes('polea') ? 'polea' : 'arnes',
+            tipo: 'arnes',
             sector,
             marca,
             modelo,
             numero_serie: serie,
             ubicacion,
-            instructor: instrRaw,
-            uso_actual: mapUsoActual(statusRaw, ubicacion),
-            comprado: String(r[8] || ''),
-            primer_uso: String(r[9] || ''),
-            observaciones: descripcion || String(r[10] || ''),
+            instructor,
+            uso_actual: uso.toUpperCase() === 'INSTR' ? 'instructor' : ubicacion === 'baja' ? 'baja' : ubicacion === 'deposito' ? 'deposito' : 'turista',
+            comprado: ingreso,
+            primer_uso: '',
+            observaciones: obs,
           })
         }
       }
 
-      // --- POLEAS (hoja 'stock poleas', datos desde índice 3) ---
-      const sheetPol = wb.Sheets['stock poleas']
+      // --- POLEAS (hoja 'stock ploeas' — typo en el Excel original) ---
+      // B: n°, C: marca, D: modelo, E: JUEGO, F: serie, H: UBIC, I: actual
+      const sheetPol = wb.Sheets['stock ploeas'] || wb.Sheets['stock poleas']
       if (sheetPol) {
         const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetPol, { header: 1, defval: '' })
-        for (let i = 3; i < rows.length; i++) {
+        for (let i = 2; i < rows.length; i++) {
           const r = rows[i] as unknown[]
-          const marca = String(r[3] || '').trim()
-          const modelo = String(r[4] || '').trim()
+          const marca = String(r[2] || '').trim()
+          const modelo = String(r[3] || '').trim()
           if (!marca && !modelo) continue
-          const serie = String(r[5] || '').trim()
-          const sector = normalizarSector(String(r[1] || '').trim())
-          const instrRaw = String(r[7] || '').trim()
-          const statusRaw = String(r[11] || '').trim()
-          const ubicacion = mapUbicacionStatus(statusRaw)
-          const descripcion = String(r[12] || '').trim()
+          const juego = String(r[4] || '').trim()
+          const serie = String(r[5] || '').trim() || String(r[1] || i).trim()
+          const ubicRaw = String(r[7] || '').trim()
+          const { ubicacion, instructor } = parseUbic(ubicRaw, juego, '')
+          const sector = sectorDeJuego(juego)
 
           resultado.push({
             tipo: 'polea',
@@ -160,108 +182,104 @@ export default function ImportarExcelStock({ onImportar, onCerrar }: Props) {
             modelo,
             numero_serie: serie,
             ubicacion,
-            instructor: instrRaw,
-            uso_actual: mapUsoActual(statusRaw, ubicacion),
-            comprado: String(r[8] || ''),
-            primer_uso: String(r[9] || ''),
-            observaciones: descripcion || String(r[10] || ''),
+            instructor,
+            uso_actual: instructor ? 'instructor' : ubicacion === 'deposito' ? 'deposito' : 'turista',
+            comprado: '',
+            primer_uso: '',
+            observaciones: '',
           })
         }
       }
 
-      // --- CASCOS (hoja 'Stock cascos', datos desde índice 2) ---
-      // col[0]=Ficha, col[1]=SECTOR, col[2]=Equipo, col[3]=MARCA, col[4]=USO, col[5]=MODELO,
-      // col[6]=TALLE, col[7]=INGRESO, col[8]=COLOR, col[9]=EN USO, col[10]=DEPOSITO,
-      // col[11]=PARA REPARAR, col[12]=BAJA, col[13]=observacion, col[14]=TOTAL
+      // --- CASCOS (hoja 'Stock cascos', datos desde fila 3 = índice 2) ---
+      // B: color/nombre, C: marca, D: uso, E: instructor count, F: tirolesa, G: parque, H: deposito OK, I: reparar, J: total
       const sheetCasc = wb.Sheets['Stock cascos']
       if (sheetCasc) {
         const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetCasc, { header: 1, defval: '' })
         for (let i = 2; i < rows.length; i++) {
           const r = rows[i] as unknown[]
-          const marca = String(r[3] || '').trim()
-          const modelo = String(r[5] || '').trim()
-          if (!marca && !modelo) continue
-          const talle = String(r[6] || '').trim()
-          const color = String(r[8] || '').trim()
-          const enUso = Number(r[9]) || 0
-          const deposito = Number(r[10]) || 0
-          const reparar = Number(r[11]) || 0
-          const baja = Number(r[12]) || 0
-          const sector = normalizarSector(String(r[1] || '').trim())
-          const obs = String(r[13] || '').trim()
+          const nombre = String(r[1] || '').trim()
+          const marca = String(r[2] || '').trim()
+          if (!nombre && !marca) continue
+          const uso = String(r[3] || '').trim().toLowerCase()
+          const enUsoTirolesa = Number(r[5]) || 0
+          const enUsoParque = Number(r[6]) || 0
+          const deposito = Number(r[7]) || 0
+          const reparar = Number(r[8]) || 0
 
-          for (let n = 0; n < enUso; n++) resultado.push({ tipo: 'casco', sector, marca, modelo: `${modelo} ${talle} ${color}`.trim(), numero_serie: `${marca}-${modelo}-${talle}-${color}-eu${n}`, ubicacion: 'en_uso', instructor: '', uso_actual: 'turista', comprado: '', primer_uso: '', observaciones: obs })
-          for (let n = 0; n < deposito; n++) resultado.push({ tipo: 'casco', sector, marca, modelo: `${modelo} ${talle} ${color}`.trim(), numero_serie: `${marca}-${modelo}-${talle}-${color}-dep${n}`, ubicacion: 'deposito', instructor: '', uso_actual: 'deposito', comprado: '', primer_uso: '', observaciones: obs })
-          for (let n = 0; n < reparar; n++) resultado.push({ tipo: 'casco', sector, marca, modelo: `${modelo} ${talle} ${color}`.trim(), numero_serie: `${marca}-${modelo}-${talle}-${color}-rep${n}`, ubicacion: 'para_reparar', instructor: '', uso_actual: 'deposito', comprado: '', primer_uso: '', observaciones: obs })
-          for (let n = 0; n < baja; n++) resultado.push({ tipo: 'casco', sector, marca, modelo: `${modelo} ${talle} ${color}`.trim(), numero_serie: `${marca}-${modelo}-${talle}-${color}-baja${n}`, ubicacion: 'baja', instructor: '', uso_actual: 'baja', comprado: '', primer_uso: '', observaciones: obs })
+          // Tirolesa
+          for (let n = 0; n < enUsoTirolesa; n++) {
+            resultado.push({ tipo: 'casco', sector: 'tirolesa', marca, modelo: nombre, numero_serie: `casco-${nombre}-tiro-eu${n}`, ubicacion: 'en_uso', instructor: '', uso_actual: uso.includes('instr') ? 'instructor' : 'turista', comprado: '', primer_uso: '', observaciones: '' })
+          }
+          // Parque
+          for (let n = 0; n < enUsoParque; n++) {
+            resultado.push({ tipo: 'casco', sector: 'parque', marca, modelo: nombre, numero_serie: `casco-${nombre}-parque-eu${n}`, ubicacion: 'en_uso', instructor: '', uso_actual: uso.includes('instr') ? 'instructor' : 'turista', comprado: '', primer_uso: '', observaciones: '' })
+          }
+          // Depósito
+          for (let n = 0; n < deposito; n++) {
+            resultado.push({ tipo: 'casco', sector: 'tirolesa', marca, modelo: nombre, numero_serie: `casco-${nombre}-dep${n}`, ubicacion: 'deposito', instructor: '', uso_actual: 'deposito', comprado: '', primer_uso: '', observaciones: '' })
+          }
+          // Reparar
+          for (let n = 0; n < reparar; n++) {
+            resultado.push({ tipo: 'casco', sector: 'tirolesa', marca, modelo: nombre, numero_serie: `casco-${nombre}-rep${n}`, ubicacion: 'para_reparar', instructor: '', uso_actual: 'deposito', comprado: '', primer_uso: '', observaciones: '' })
+          }
         }
       }
 
-      // --- ARCOS (hoja 'stock arcos', datos desde índice 2) ---
-      // col[1]=ficha, col[2]=SECTOR, col[3]=Equipo, col[4]=MARCA, col[5]=MODELO,
-      // col[6]=COLOR, col[7]=DUREZA, col[8]=LATERALIDAD, col[9]=ubicacion, col[10]=OBSERVACIONES
+      // --- ARCOS (hoja 'stock arcos', datos desde fila 4 = índice 3) ---
+      // B: modelo, C: marca, D: dureza, E: uso, F: derecho, G: zurdo, H: ambidiestro, I: deposito, J: en_uso, K: total
       const sheetArc = wb.Sheets['stock arcos']
       if (sheetArc) {
         const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetArc, { header: 1, defval: '' })
-        for (let i = 2; i < rows.length; i++) {
+        for (let i = 3; i < rows.length; i++) {
           const r = rows[i] as unknown[]
-          const marca = String(r[4] || '').trim()
-          const modelo = String(r[5] || '').trim()
-          if (!marca && !modelo) continue
-          const color = String(r[6] || '').trim()
-          const dureza = String(r[7] || '').trim()
-          const lateralidad = String(r[8] || '').trim()
-          const sector = normalizarSector(String(r[2] || '').trim())
-          const ubicRaw = String(r[9] || '').trim()
-          const obs = String(r[10] || '').trim()
-          const caracteristicas = [color, dureza, lateralidad].filter(Boolean).join(' ')
-          const ficha = String(r[1] || i).trim()
+          const modelo = String(r[1] || '').trim()
+          const marca = String(r[2] || '').trim()
+          if (!modelo && !marca) continue
+          const dureza = String(r[3] || '').trim()
+          const uso = String(r[4] || '').trim()
+          const derechos = Number(r[5]) || 0
+          const zurdos = Number(r[6]) || 0
+          const ambidestros = Number(r[7]) || 0
+          const deposito = Number(r[8]) || 0
+          const enUso = Number(r[9]) || 0
+          const caracteristicas = [dureza, uso].filter(Boolean).join(' — ')
 
-          resultado.push({
-            tipo: 'arco',
-            sector,
-            marca,
-            modelo,
-            numero_serie: ficha,
-            ubicacion: mapUbicacionStatus(ubicRaw),
-            instructor: '',
-            uso_actual: 'turista',
-            comprado: '',
-            primer_uso: '',
-            observaciones: obs,
-            caracteristicas,
-          })
+          for (let n = 0; n < derechos; n++) resultado.push({ tipo: 'arco', sector: 'arqueria', marca, modelo, numero_serie: `arco-${modelo}-${marca}-der${n}`, ubicacion: 'en_uso', instructor: '', uso_actual: 'turista', comprado: '', primer_uso: '', observaciones: '', caracteristicas: caracteristicas + ' derecho' })
+          for (let n = 0; n < zurdos; n++) resultado.push({ tipo: 'arco', sector: 'arqueria', marca, modelo, numero_serie: `arco-${modelo}-${marca}-zur${n}`, ubicacion: 'en_uso', instructor: '', uso_actual: 'turista', comprado: '', primer_uso: '', observaciones: '', caracteristicas: caracteristicas + ' zurdo' })
+          for (let n = 0; n < ambidestros; n++) resultado.push({ tipo: 'arco', sector: 'arqueria', marca, modelo, numero_serie: `arco-${modelo}-${marca}-amb${n}`, ubicacion: 'en_uso', instructor: '', uso_actual: 'turista', comprado: '', primer_uso: '', observaciones: '', caracteristicas })
+          for (let n = 0; n < deposito; n++) resultado.push({ tipo: 'arco', sector: 'arqueria', marca, modelo, numero_serie: `arco-${modelo}-${marca}-dep${n}`, ubicacion: 'deposito', instructor: '', uso_actual: 'deposito', comprado: '', primer_uso: '', observaciones: '', caracteristicas })
         }
       }
 
-      // --- VARIOS (hoja 'stock  varios', datos desde índice 4) ---
-      // col[1]=ficha, col[2]=SECTOR, col[3]=Equipo, col[4]=caracteristicas,
-      // col[5]=EN USO, col[6]=EN DEPOSITO, col[7]=PARA REPARAR, col[8]=REPUESTOS, col[9]=TOTAL
-      const sheetVar = wb.Sheets['stock  varios']
+      // --- VARIOS (hoja 'stock varios', datos desde fila 4 = índice 3) ---
+      // B: nombre, C: marca, D: turista, E: instructor, F: mantenimiento, G: depositoOK, H: deposito reparar, I: total
+      const sheetVar = wb.Sheets['stock varios'] || wb.Sheets['stock  varios']
       if (sheetVar) {
         const rows: unknown[][] = XLSXLib.utils.sheet_to_json(sheetVar, { header: 1, defval: '' })
-        for (let i = 4; i < rows.length; i++) {
+        for (let i = 3; i < rows.length; i++) {
           const r = rows[i] as unknown[]
-          const nombre = String(r[3] || '').trim()
-          if (!nombre) continue
-          const sector = normalizarSector(String(r[2] || '').trim())
-          const caracteristicas = String(r[4] || '').trim()
-          const enUso = Number(r[5]) || 0
-          const deposito = Number(r[6]) || 0
-          const reparar = Number(r[7]) || 0
-          const repuestos = Number(r[8]) || 0
+          const nombre = String(r[1] || '').trim()
+          if (!nombre || nombre.toLowerCase().includes('material')) continue
+          const marca = String(r[2] || '').trim()
+          const turista = Number(r[3]) || 0
+          const instructor = Number(r[4]) || 0
+          const mantenimiento = Number(r[5]) || 0
+          const depositoOK = Number(r[6]) || 0
+          const depositoRep = Number(r[7]) || 0
 
           resultadoVarios.push({
-            sector,
-            nombre,
-            caracteristicas,
-            enUso,
-            deposito,
-            reparar,
-            repuestos,
+            sector: 'tirolesa',
+            nombre: `${nombre}${marca ? ` (${marca})` : ''}`,
+            caracteristicas: marca,
+            enUso: turista + instructor + mantenimiento,
+            deposito: depositoOK,
+            reparar: depositoRep,
+            repuestos: 0,
           })
         }
       }
+
 
       setFechaDoc(fechaArchivo)
       setEquipos(resultado)

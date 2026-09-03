@@ -261,62 +261,80 @@ export default function EquipoPage() {
         }
       }
 
-      // STOCK — Cascos
+      // STOCK — Cascos (Col A vacía → índices desde 0=ColB)
       const shCasc = wb.Sheets['Stock cascos']
       if (shCasc) {
         setImportLog(l => [...l, '⛑️ Procesando cascos...'])
         const rows: unknown[][] = XLSX.utils.sheet_to_json(shCasc, { header: 1, defval: '' })
+        // detectar offset: si fila 1 col 0 es vacía, datos empiezan en col 1
+        const offset = String(rows[1]?.[0] || '').trim() === '' ? 0 : 1
         for (let i = 2; i < rows.length; i++) {
           const r = rows[i] as unknown[]
-          const nombre = String(r[1] || '').trim()
-          const marca = String(r[2] || '').trim()
+          const nombre = String(r[0 + offset] || '').trim()
+          const marca = String(r[1 + offset] || '').trim()
           if (!nombre) continue
-          const uso = String(r[3] || '').trim()
-          const instrCount = Number(r[4]) || 0
-          const tirolesa = Number(r[5]) || 0
-          const parque = Number(r[6]) || 0
-          const dep = Number(r[7]) || 0
-          const rep = Number(r[8]) || 0
+          const uso = String(r[2 + offset] || '').trim()
+          const instrCount = Number(r[3 + offset]) || 0
+          const tirolesa = Number(r[4 + offset]) || 0
+          const parque = Number(r[5 + offset]) || 0
+          const dep = Number(r[6 + offset]) || 0
+          const rep = Number(r[7 + offset]) || 0
           stockNuevo.push({ categoria: 'casco', nombre: `Casco ${nombre}`, marca, descripcion: `Uso: ${uso}`, en_uso: instrCount + tirolesa + parque, deposito: dep, reparar: rep, baja: 0 })
         }
       }
 
-      // STOCK — Arcos
+      // STOCK — Arcos (Col A vacía → r[0]=Modelo, r[1]=Marca)
       const shArc = wb.Sheets['stock arcos']
       if (shArc) {
         setImportLog(l => [...l, '🏹 Procesando arcos...'])
         const rows: unknown[][] = XLSX.utils.sheet_to_json(shArc, { header: 1, defval: '' })
+        // detectar offset: buscar fila con 'Modelo' o 'modelo'
+        let arcOffset = 0
+        for (const r of rows.slice(0, 5)) {
+          const r0 = String((r as unknown[])[0] || '').toLowerCase()
+          const r1 = String((r as unknown[])[1] || '').toLowerCase()
+          if (r0.includes('model')) { arcOffset = 0; break }
+          if (r1.includes('model')) { arcOffset = 1; break }
+        }
         for (let i = 3; i < rows.length; i++) {
           const r = rows[i] as unknown[]
-          const modelo = String(r[1] || '').trim()
-          const marca = String(r[2] || '').trim()
+          const modelo = String(r[0 + arcOffset] || '').trim()
+          const marca = String(r[1 + arcOffset] || '').trim()
           if (!modelo) continue
-          const dureza = String(r[3] || '').trim()
-          const uso = String(r[4] || '').trim()
-          const der = Number(r[5]) || 0
-          const zur = Number(r[6]) || 0
-          const amb = Number(r[7]) || 0
-          const dep = Number(r[8]) || 0
-          const enUso = (typeof r[9] === 'number') ? r[9] : 0
+          const dureza = String(r[2 + arcOffset] || '').trim()
+          const uso = String(r[3 + arcOffset] || '').trim()
+          const der = Number(r[4 + arcOffset]) || 0
+          const zur = Number(r[5 + arcOffset]) || 0
+          const amb = Number(r[6 + arcOffset]) || 0
+          const dep = Number(r[7 + arcOffset]) || 0
+          const enUso = (typeof r[8 + arcOffset] === 'number') ? r[8 + arcOffset] as number : 0
           stockNuevo.push({ categoria: 'arco', nombre: `${modelo} ${dureza} — ${uso}`.trim(), marca, descripcion: `Derecho:${der} Zurdo:${zur} Ambidiestro:${amb}`, en_uso: enUso > 0 ? enUso : der + zur + amb, deposito: dep, reparar: 0, baja: 0 })
         }
       }
 
-      // STOCK — Varios
+      // STOCK — Varios (Col A vacía → r[0]=nombre, r[1]=marca)
       const shVar = wb.Sheets['stock varios'] || wb.Sheets['stock  varios']
       if (shVar) {
         setImportLog(l => [...l, '📦 Procesando varios...'])
         const rows: unknown[][] = XLSX.utils.sheet_to_json(shVar, { header: 1, defval: '' })
+        // detectar offset: buscar fila con 'Materiales'
+        let varOffset = 0
+        for (const r of rows.slice(0, 5)) {
+          const r0 = String((r as unknown[])[0] || '').toLowerCase()
+          const r1 = String((r as unknown[])[1] || '').toLowerCase()
+          if (r0.includes('material')) { varOffset = 0; break }
+          if (r1.includes('material')) { varOffset = 1; break }
+        }
         for (let i = 3; i < rows.length; i++) {
           const r = rows[i] as unknown[]
-          const nombre = String(r[1] || '').trim()
+          const nombre = String(r[0 + varOffset] || '').trim()
           if (!nombre || nombre.toLowerCase().includes('material')) continue
-          const marca = String(r[2] || '').trim()
-          const tur = Number(r[3]) || 0
-          const instr = Number(r[4]) || 0
-          const mant = Number(r[5]) || 0
-          const dep = Number(r[6]) || 0
-          const rep = Number(r[7]) || 0
+          const marca = String(r[1 + varOffset] || '').trim()
+          const tur = Number(r[2 + varOffset]) || 0
+          const instr = Number(r[3 + varOffset]) || 0
+          const mant = Number(r[4 + varOffset]) || 0
+          const dep = Number(r[5 + varOffset]) || 0
+          const rep = Number(r[6 + varOffset]) || 0
           let cat = 'varios'
           const n = nombre.toLowerCase()
           if (n.includes('casco')) cat = 'casco'

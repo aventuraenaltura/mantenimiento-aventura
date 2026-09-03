@@ -90,6 +90,8 @@ export default function BitacoraPage() {
   const [fTarea, setFTarea] = useState({
     descripcion: '', sector: '', urgencia: 'media',
     responsable: '', fecha_estimada: '', notas: '',
+    materiales_solicitados: [] as string[],
+    nuevo_mat_tarea: '',
   })
 
   // Form pedido
@@ -166,16 +168,33 @@ export default function BitacoraPage() {
   // ── Guardar tarea ───────────────────────────────────────────────────
   async function guardarTarea() {
     if (!fTarea.descripcion.trim()) return
+    const camposTarea = {
+      descripcion: fTarea.descripcion, sector: fTarea.sector,
+      urgencia: fTarea.urgencia, responsable: fTarea.responsable,
+      fecha_estimada: fTarea.fecha_estimada, notas: fTarea.notas,
+    }
     if (editandoTarea) {
-      await supabase.from('bitacora_tareas').update({ ...fTarea }).eq('id', editandoTarea.id)
+      await supabase.from('bitacora_tareas').update(camposTarea).eq('id', editandoTarea.id)
     } else {
       await supabase.from('bitacora_tareas').insert({
         id: `tar_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
-        ...fTarea,
+        ...camposTarea,
+      })
+    }
+    // Crear pedidos por los materiales solicitados
+    for (const mat of fTarea.materiales_solicitados) {
+      await supabase.from('bitacora_pedidos').insert({
+        id: `ped_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+        descripcion: mat,
+        urgencia: fTarea.urgencia === 'muy_urgente' ? 'urgente' : 'normal',
+        solicitado_por: usuario?.nombre,
+        solicitado_en: new Date().toISOString().split('T')[0],
+        llego: false,
+        notas: `Requerido por tarea: ${fTarea.descripcion}`,
       })
     }
     setShowFormTarea(false); setEditandoTarea(null)
-    setFTarea({ descripcion: '', sector: '', urgencia: 'media', responsable: '', fecha_estimada: '', notas: '' })
+    setFTarea({ descripcion: '', sector: '', urgencia: 'media', responsable: '', fecha_estimada: '', notas: '', materiales_solicitados: [], nuevo_mat_tarea: '' })
     cargarTodo()
   }
 
@@ -385,7 +404,7 @@ export default function BitacoraPage() {
                           <option value="finalizado">Finalizado ✅</option>
                         </select>
                         <div className="flex gap-1">
-                          <button onClick={() => { setEditandoTarea(t); setFTarea({ descripcion: t.descripcion, sector: t.sector ?? '', urgencia: t.urgencia, responsable: t.responsable ?? '', fecha_estimada: t.fecha_estimada ?? '', notas: t.notas ?? '' }); setShowFormTarea(true) }}
+                          <button onClick={() => { setEditandoTarea(t); setFTarea({ descripcion: t.descripcion, sector: t.sector ?? '', urgencia: t.urgencia, responsable: t.responsable ?? '', fecha_estimada: t.fecha_estimada ?? '', notas: t.notas ?? '', materiales_solicitados: [], nuevo_mat_tarea: '' }); setShowFormTarea(true) }}
                             className="text-xs px-2 py-1 rounded-lg" style={{ background: '#f0f9ff', color: '#0284c7' }}>✏️</button>
                           {usuario?.rol === 'admin' && t.estado === 'finalizado' && (
                             <button onClick={() => borrarTarea(t.id)}
@@ -685,6 +704,30 @@ export default function BitacoraPage() {
                 <label className="text-xs font-semibold text-gray-600">Notas</label>
                 <input value={fTarea.notas} onChange={e => setFTarea(f => ({ ...f, notas: e.target.value }))}
                   className="w-full border rounded-xl px-3 py-2 text-sm mt-0.5 focus:outline-none" style={{ border: '1.5px solid #e5e7eb' }} />
+              </div>
+
+              {/* Materiales solicitados */}
+              <div className="border rounded-xl p-3" style={{ border: '1.5px solid #e5e7eb' }}>
+                <p className="text-xs font-semibold text-gray-600 mb-2">🛒 Materiales necesarios para esta tarea</p>
+                {fTarea.materiales_solicitados.map((m, i) => (
+                  <div key={i} className="flex items-center gap-2 mb-1.5">
+                    <span className="text-sm flex-1 bg-amber-50 text-amber-800 px-3 py-1.5 rounded-lg">{m}</span>
+                    <button onClick={() => setFTarea(f => ({ ...f, materiales_solicitados: f.materiales_solicitados.filter((_, j) => j !== i) }))}
+                      className="text-red-400 text-xs hover:text-red-600">✕</button>
+                  </div>
+                ))}
+                <div className="flex gap-2">
+                  <input value={fTarea.nuevo_mat_tarea}
+                    onChange={e => setFTarea(f => ({ ...f, nuevo_mat_tarea: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter' && fTarea.nuevo_mat_tarea.trim()) { setFTarea(f => ({ ...f, materiales_solicitados: [...f.materiales_solicitados, f.nuevo_mat_tarea.trim()], nuevo_mat_tarea: '' })) }}}
+                    placeholder="ej: Tornillos M8, pintura..."
+                    className="flex-1 border rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ border: '1.5px solid #e5e7eb' }} />
+                  <button onClick={() => { if (fTarea.nuevo_mat_tarea.trim()) setFTarea(f => ({ ...f, materiales_solicitados: [...f.materiales_solicitados, f.nuevo_mat_tarea.trim()], nuevo_mat_tarea: '' })) }}
+                    className="px-3 py-2 rounded-xl text-sm font-bold text-white" style={{ background: '#1e3a3a' }}>+</button>
+                </div>
+                {fTarea.materiales_solicitados.length > 0 && (
+                  <p className="text-xs text-amber-600 mt-1.5">→ Se agregarán {fTarea.materiales_solicitados.length} material(es) a Pedidos</p>
+                )}
               </div>
               <button onClick={guardarTarea} disabled={!fTarea.descripcion.trim()}
                 className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40"

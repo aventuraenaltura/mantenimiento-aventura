@@ -68,7 +68,7 @@ const CATEGORIAS: Record<string, string> = {
 export default function EquipoPage() {
   const router = useRouter()
   const [usuario, setUsuario] = useState<{ nombre: string; rol: string } | null>(null)
-  const [tab, setTab] = useState<'fichas' | 'stock' | 'reparaciones' | 'importar'>('fichas')
+  const [tab, setTab] = useState<'fichas' | 'control' | 'stock' | 'reparaciones' | 'importar'>('control')
   const [fichas, setFichas] = useState<Ficha[]>([])
   const [stock, setStock] = useState<Stock[]>([])
   const [cargando, setCargando] = useState(true)

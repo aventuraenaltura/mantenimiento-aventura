@@ -30,6 +30,30 @@ interface Ejecucion {
   archivo_data?: string   // legacy base64
   archivo_url?: string    // nuevo: URL de Supabase Storage
   archivos_agrimensor?: ArchivoAdjunto[]
+  estado?: 'realizado' | 'pendiente'  // sin valor = realizado (registros viejos)
+  pendiente_nota?: string             // lo que había quedado por hacer, se guarda al completarlo
+  completado_fecha?: string
+  completado_por?: string
+}
+
+type EstadoMes = 'realizada' | 'pendiente' | 'para_realizar' | 'vencida'
+
+// Pendiente es naranja; "para realizar" pasa a gris para no confundirse con pendiente
+const COLOR_ESTADO: Record<EstadoMes, string> = {
+  realizada:     '#16a34a',
+  pendiente:     '#ea580c',
+  para_realizar: '#64748b',
+  vencida:       '#dc2626',
+}
+const LABEL_ESTADO: Record<EstadoMes, string> = {
+  realizada:     '✓ Realizada',
+  pendiente:     '⏳ Pendiente',
+  para_realizar: '● Para realizar',
+  vencida:       '✗ Vencida',
+}
+
+function esPendiente(ej: Ejecucion) {
+  return ej.estado === 'pendiente'
 }
 
 interface Props {
@@ -99,6 +123,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   const [archivosAgrimensor, setArchivosAgrimensor] = useState<File[]>([])
   const [mostrarHistorial, setMostrarHistorial] = useState(false)
   const [editandoEjecucion, setEditandoEjecucion] = useState<string | null>(null)
+  const [completandoEjecucion, setCompletandoEjecucion] = useState<Ejecucion | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
   const [proximasFechas, setProximasFechas] = useState<Record<string, string>>({})
@@ -449,8 +474,10 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     }
   }
 
-  async function guardarEjecucion() {
-    if (!planillaSeleccionada || !form.nombre) return
+  async function guardarEjecucion(estado: 'realizado' | 'pendiente' = 'realizado') {
+    if (!planillaSeleccionada) return
+    if (!form.nombre.trim()) { setErrorGuardar('Completá "Realizado por".'); return }
+    if (estado === 'pendiente' && !form.obs.trim()) { setErrorGuardar('Para dejarlo pendiente escribí en Observaciones qué quedó por hacer.'); return }
     setGuardando(true)
     setErrorGuardar(null)
     try {
@@ -485,7 +512,34 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
       setErrorGuardar('⚠️ El archivo adjunto no se pudo subir. El registro se guardó igualmente sin el adjunto.')
     }
 
-    if (editandoEjecucion) {
+    if (completandoEjecucion) {
+      // Completar un pendiente: el registro mantiene su fecha (pertenece a ese ciclo) y pasa a realizado
+      const original = completandoEjecucion
+      const cambios = {
+        estado: 'realizado' as const,
+        pendiente_nota: original.observaciones ?? '',
+        completado_fecha: new Date().toISOString().split('T')[0],
+        completado_por: form.nombre,
+        controlo: form.controlo,
+        ingeniero: form.ingeniero,
+        tiempo_min: form.tiempo ? Number(form.tiempo) : original.tiempo_min,
+        repuestos: [original.repuestos, form.repuestos].filter(r => r?.trim()).join(' · '),
+        observaciones: form.obs,
+        ...(firmadoUrl ? { archivo_nombre: firmadoNombre, archivo_url: firmadoUrl } : {}),
+        ...(agrimensoresSubidos.length > 0 ? { archivos_agrimensor: [...(original.archivos_agrimensor ?? []), ...agrimensoresSubidos] } : {}),
+      }
+      const ok = await actualizarEjecucion(original.id, cambios)
+      if (!ok) {
+        setErrorGuardar('No se pudo guardar en el servidor. Revisá tu conexión y volvé a intentar.')
+        return
+      }
+      setEjecuciones(prev => {
+        const nuevas = prev.map(e => e.id !== original.id ? e : ({ ...e, ...cambios } as Ejecucion))
+        localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
+        return nuevas
+      })
+      setCompletandoEjecucion(null)
+    } else if (editandoEjecucion) {
       const cambios = {
         fecha: form.fecha,
         proxima_fecha: proxima,
@@ -520,8 +574,14 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
         archivo_nombre: firmadoNombre,
         archivo_url: firmadoUrl,
         archivos_agrimensor: agrimensoresSubidos,
+        // Solo se envía si es pendiente: los registros realizados siguen funcionando aunque falte la columna
+        ...(estado === 'pendiente' ? { estado } : {}),
       }
-      await insertarEjecucion(actividadId, nueva as unknown as Record<string, unknown>)
+      const ok = await insertarEjecucion(actividadId, nueva as unknown as Record<string, unknown>)
+      if (!ok) {
+        setErrorGuardar('No se pudo guardar en el servidor. Revisá tu conexión y volvé a intentar.')
+        return
+      }
       setEjecuciones(prev => {
         const nuevas = [...prev, nueva]
         localStorage.setItem(`ejecuciones_${actividadId}`, JSON.stringify(nuevas))
@@ -581,13 +641,48 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     })
     setArchivoFirmado(null)
     setArchivosAgrimensor([])
+    setCompletandoEjecucion(null)
     setEditandoEjecucion(ej.id)
     setMostrarFormulario(true)
     setMostrarHistorial(false)
   }
 
+  // Último registro pendiente de una planilla (cualquier mes), o undefined
+  function pendienteDe(codigo: string): Ejecucion | undefined {
+    return ejecuciones
+      .filter(e => e.planilla_id === codigo && esPendiente(e))
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
+  }
+
+  function abrirCompletarPendiente(ej: Ejecucion) {
+    setForm(f => ({
+      ...f,
+      fecha: ej.fecha,
+      nombre: ej.ejecutado_por,
+      tiempo: '',
+      repuestos: '',
+      obs: '',
+      controlo: ej.controlo || f.controlo,
+      ingeniero: ej.ingeniero || f.ingeniero,
+    }))
+    setArchivoFirmado(null)
+    setArchivosAgrimensor([])
+    setErrorGuardar(null)
+    setEditandoEjecucion(null)
+    setCompletandoEjecucion(ej)
+    setMostrarFormulario(true)
+    setMostrarHistorial(false)
+  }
+
+  function cerrarFormulario() {
+    setMostrarFormulario(false)
+    setEditandoEjecucion(null)
+    setCompletandoEjecucion(null)
+    setErrorGuardar(null)
+  }
+
   // Días del mes con planillas
-  const diasConPlanilla: Record<number, { codigo: string; nombre: string; color: string; estado: 'realizada' | 'para_realizar' | 'vencida' }[]> = {}
+  const diasConPlanilla: Record<number, { codigo: string; nombre: string; color: string; estado: EstadoMes }[]> = {}
   planillas.forEach(p => {
     // Primero buscar ejecución real en el mes
     const ejEnMes = ejecuciones.find(e => {
@@ -617,7 +712,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
 
     const dia = new Date(fechaRef).getDate()
     const est = estadoMes(p, [fechaRef])
-    const col = est === 'realizada' ? '#16a34a' : est === 'vencida' ? '#dc2626' : '#f59e0b'
+    const col = COLOR_ESTADO[est]
     if (!diasConPlanilla[dia]) diasConPlanilla[dia] = []
     diasConPlanilla[dia].push({ codigo: p.codigo, nombre: p.nombre, color: col, estado: est })
   })
@@ -626,9 +721,10 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   const primerDia = new Date(calAnio, calMes, 1).getDay()
 
   const estilosEstado: Record<string, React.CSSProperties> = {
-    rojo:    { background: '#dc2626', color: 'white', border: 'none' },
-    naranja: { background: '#f59e0b', color: 'white', border: 'none' },
-    verde:   { background: '#16a34a', color: 'white', border: 'none' },
+    rojo:      { background: COLOR_ESTADO.vencida, color: 'white', border: 'none' },
+    naranja:   { background: COLOR_ESTADO.para_realizar, color: 'white', border: 'none' },
+    verde:     { background: COLOR_ESTADO.realizada, color: 'white', border: 'none' },
+    pendiente: { background: COLOR_ESTADO.pendiente, color: 'white', border: 'none' },
   }
   // Mantener para compatibilidad con código existente
   const coloresEstado: Record<string, string> = {
@@ -744,7 +840,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                             background: est === 'realizada' ? '#000' : '#fff',
                             color: est === 'realizada' ? '#fff' : '#000',
                           }}>
-                            {est === 'realizada' ? '✓ REALIZADA' : est === 'vencida' ? '✗ VENCIDA' : '○ PENDIENTE'}
+                            {est === 'realizada' ? '✓ REALIZADA' : est === 'vencida' ? '✗ VENCIDA' : est === 'pendiente' ? '⏳ PENDIENTE' : '○ PARA REALIZAR'}
                           </span>
                         </td>
                       </tr>
@@ -837,13 +933,14 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     )
   }
 
-  // Determinar estado de una planilla del mes: realizada / para realizar / vencida
-  function estadoMes(p: Planilla, fechas: string[]): 'realizada' | 'para_realizar' | 'vencida' {
-    const realizada = ejecuciones.some(e => {
+  // Determinar estado de una planilla del mes: realizada / pendiente / para realizar / vencida
+  function estadoMes(p: Planilla, fechas: string[]): EstadoMes {
+    const ejDelMes = ejecuciones.filter(e => {
       const d = new Date(e.fecha)
       return e.planilla_id === p.codigo && d.getMonth() === calMes && d.getFullYear() === calAnio
     })
-    if (realizada) return 'realizada'
+    if (ejDelMes.some(e => !esPendiente(e))) return 'realizada'
+    if (ejDelMes.length > 0) return 'pendiente'
     const todasPasadas = fechas.every(f => new Date(f) < hoy)
     if (todasPasadas) return 'vencida'
     return 'para_realizar'
@@ -929,6 +1026,18 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
               <div>
                 <h2 className="font-bold text-gray-800">Mantenimientos de {MESES[calMes]}</h2>
                 <p className="text-xs text-gray-400 mt-0.5">Planillas programadas para este mes</p>
+                {(() => {
+                  const conPendiente = planillas.filter(p => pendienteDe(p.codigo))
+                  if (conPendiente.length === 0) return null
+                  return (
+                    <button onClick={() => seleccionarPlanilla(conPendiente[0])}
+                      title={conPendiente.map(p => `${p.codigo} ${p.nombre}`).join('\n')}
+                      className="mt-1.5 text-xs font-bold text-white rounded-lg px-2.5 py-1 hover:opacity-90"
+                      style={{ background: COLOR_ESTADO.pendiente }}>
+                      ⏳ {conPendiente.length} pendiente{conPendiente.length !== 1 ? 's' : ''} — ver
+                    </button>
+                  )
+                })()}
               </div>
               <button onClick={() => setMostrarPDFMes(true)}
                 className="text-xs text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 bg-white font-medium flex items-center gap-1.5">
@@ -956,9 +1065,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                       style={seleccionada ? { borderColor: color } : {}}
                     >
                       {/* Indicador de estado */}
-                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{
-                        background: estado === 'realizada' ? '#16a34a' : estado === 'vencida' ? '#dc2626' : '#f59e0b'
-                      }} />
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: COLOR_ESTADO[estado] }} />
 
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-800 text-sm truncate">{p.nombre}</p>
@@ -969,11 +1076,8 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                         </p>
                       </div>
 
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg flex-shrink-0 text-white" style={{
-                        background: estado === 'realizada' ? '#16a34a' : estado === 'vencida' ? '#dc2626' : '#f59e0b'
-                      }}>
-                        {estado === 'realizada' ? '✓ Realizada' :
-                         estado === 'vencida'   ? '✗ Vencida'   : '● Para realizar'}
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg flex-shrink-0 text-white" style={{ background: COLOR_ESTADO[estado] }}>
+                        {LABEL_ESTADO[estado]}
                       </span>
                     </div>
                   )
@@ -1049,9 +1153,10 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
             </div>
             {/* Leyenda */}
             <div className="mt-3 flex gap-4 text-xs" style={{ color: '#9ca3af' }}>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{background:'#16a34a'}}/>Realizada</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{background:'#f59e0b'}}/>Para realizar</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{background:'#dc2626'}}/>Vencida</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{background: COLOR_ESTADO.realizada}}/>Realizada</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{background: COLOR_ESTADO.pendiente}}/>Pendiente</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{background: COLOR_ESTADO.para_realizar}}/>Para realizar</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{background: COLOR_ESTADO.vencida}}/>Vencida</span>
             </div>
           </div>
         </div>
@@ -1088,12 +1193,32 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
               </div>
             )}
 
+            {(() => {
+              const pend = pendienteDe(planillaSeleccionada.codigo)
+              if (!pend) return null
+              return (
+                <div className="mt-3 rounded-xl p-3" style={{ background: '#fff7ed', border: `2px solid ${COLOR_ESTADO.pendiente}` }}>
+                  <p className="text-xs font-bold mb-1" style={{ color: COLOR_ESTADO.pendiente }}>⏳ PENDIENTE — quedó por hacer:</p>
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{pend.observaciones}</p>
+                  <p className="text-xs text-gray-500 mt-1">Registrado el {fmtFecha(pend.fecha)} por {pend.ejecutado_por}</p>
+                </div>
+              )
+            })()}
+
             <div className="flex gap-2 mt-4">
-              <button onClick={() => { setMostrarFormulario(true); setMostrarAdjuntarOriginal(false); setMostrarHistorial(false) }}
-                className="flex-1 text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90"
-                style={{ backgroundColor: '#16a34a' }}>
-                ✓ Registrar que se realizó
-              </button>
+              {pendienteDe(planillaSeleccionada.codigo) ? (
+                <button onClick={() => abrirCompletarPendiente(pendienteDe(planillaSeleccionada.codigo)!)}
+                  className="flex-1 text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90"
+                  style={{ backgroundColor: COLOR_ESTADO.realizada }}>
+                  ✓ Completar mantenimiento
+                </button>
+              ) : (
+                <button onClick={() => { setCompletandoEjecucion(null); setEditandoEjecucion(null); setErrorGuardar(null); setMostrarFormulario(true); setMostrarAdjuntarOriginal(false); setMostrarHistorial(false) }}
+                  className="flex-1 text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90"
+                  style={{ backgroundColor: '#16a34a' }}>
+                  ✓ Registrar que se realizó
+                </button>
+              )}
               <button
                 onClick={() => setMostrarHistorial(h => !h)}
                 className="px-3 py-2.5 rounded-xl text-sm flex items-center gap-1.5 font-semibold"
@@ -1133,12 +1258,26 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                                   {fmtFecha(ej.fecha)}
                                 </span>
                                 <span className="text-xs text-gray-500">— {ej.ejecutado_por}</span>
+                                {esPendiente(ej) && (
+                                  <span className="text-xs font-bold text-white px-1.5 py-0.5 rounded" style={{ background: COLOR_ESTADO.pendiente }}>⏳ Pendiente</span>
+                                )}
+                                {ej.completado_fecha && (
+                                  <span className="text-xs font-bold text-white px-1.5 py-0.5 rounded" style={{ background: COLOR_ESTADO.realizada }}>✓ Completado</span>
+                                )}
                                 {ej.controlo && <span className="text-xs text-gray-400">· Controló: {ej.controlo}</span>}
                                 {ej.tiempo_min && <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{ej.tiempo_min} min</span>}
                               </div>
                               {ej.ingeniero && <p className="text-xs text-gray-400 mt-0.5">Ing: {ej.ingeniero}</p>}
                               {ej.repuestos && <p className="text-xs text-gray-500 mt-0.5">🔩 {ej.repuestos}</p>}
-                              {ej.observaciones && <p className="text-xs text-gray-600 mt-0.5 italic">"{ej.observaciones}"</p>}
+                              {ej.pendiente_nota && (
+                                <p className="text-xs mt-1 rounded px-2 py-1" style={{ background: '#fff7ed', color: '#9a3412' }}>
+                                  Había quedado pendiente: &quot;{ej.pendiente_nota}&quot;
+                                  {ej.completado_fecha && <> · Completado el {fmtFecha(ej.completado_fecha)}{ej.completado_por ? ` por ${ej.completado_por}` : ''}</>}
+                                </p>
+                              )}
+                              {ej.observaciones && (esPendiente(ej)
+                                ? <p className="text-xs mt-1 rounded px-2 py-1 font-semibold" style={{ background: '#fff7ed', color: '#9a3412', border: `1px solid ${COLOR_ESTADO.pendiente}` }}>Queda por hacer: {ej.observaciones}</p>
+                                : <p className="text-xs text-gray-600 mt-0.5 italic">&quot;{ej.observaciones}&quot;</p>)}
                               <div className="flex gap-2 mt-1.5 flex-wrap">
                                 {(ej.archivo_url || ej.archivo_data) && (
                                   <a href={ej.archivo_url || ej.archivo_data} download={!ej.archivo_url ? (ej.archivo_nombre || 'planilla-firmada.pdf') : undefined} target={ej.archivo_url ? '_blank' : undefined} rel="noreferrer"
@@ -1212,17 +1351,26 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="font-semibold text-gray-800 text-sm">
-                  {editandoEjecucion ? '✏️ Editando registro' : 'Registrar ejecución'} — {planillaSeleccionada.nombre}
+                  {completandoEjecucion ? '✓ Completar mantenimiento pendiente' : editandoEjecucion ? '✏️ Editando registro' : 'Registrar ejecución'} — {planillaSeleccionada.nombre}
                 </h3>
                 {editandoEjecucion && <p className="text-xs text-amber-600 mt-0.5">Los archivos nuevos se agregan a los existentes</p>}
               </div>
-              <button onClick={() => { setMostrarFormulario(false); setEditandoEjecucion(null) }} className="text-gray-400 hover:text-gray-600">✕</button>
+              <button onClick={cerrarFormulario} className="text-gray-400 hover:text-gray-600">✕</button>
             </div>
+            {completandoEjecucion && (
+              <div className="mb-3 rounded-xl p-3" style={{ background: '#fff7ed', border: `2px solid ${COLOR_ESTADO.pendiente}` }}>
+                <p className="text-xs font-bold mb-1" style={{ color: COLOR_ESTADO.pendiente }}>⏳ Quedó por hacer:</p>
+                <p className="text-sm text-gray-800 whitespace-pre-wrap">{completandoEjecucion.observaciones}</p>
+                <p className="text-xs text-gray-500 mt-1">Registrado el {fmtFecha(completandoEjecucion.fecha)} por {completandoEjecucion.ejecutado_por}. Al guardar, el mantenimiento queda REALIZADO.</p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-gray-600">Fecha</label>
+                {/* Al completar un pendiente la fecha queda fija: el registro pertenece a ese ciclo */}
                 <input type="date" value={form.fecha} onChange={e => setForm(f => ({...f, fecha: e.target.value}))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-0.5" />
+                  disabled={!!completandoEjecucion}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-0.5 disabled:bg-gray-50 disabled:text-gray-500" />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-600">Tiempo (minutos)</label>
@@ -1250,10 +1398,13 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-0.5" placeholder="ej: 2 nocks, 1 cuerda" />
               </div>
               <div className="col-span-2">
-                <label className="text-xs font-medium text-gray-600">Observaciones</label>
+                <label className="text-xs font-medium text-gray-600">
+                  {completandoEjecucion ? 'Qué se hizo para completarlo' : 'Observaciones'}
+                  {!completandoEjecucion && !editandoEjecucion && <span className="text-gray-400 font-normal"> — si algo quedó sin hacer, escribilo acá y usá &quot;Dejar pendiente&quot;</span>}
+                </label>
                 <textarea value={form.obs} onChange={e => setForm(f => ({...f, obs: e.target.value}))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-0.5 resize-none" rows={2}
-                  placeholder="Novedades, problemas detectados..." />
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-0.5 resize-none" rows={3}
+                  placeholder={completandoEjecucion ? 'ej: se cambió el tornillo faltante' : 'Novedades, problemas detectados, qué quedó por hacer...'} />
               </div>
               <div className="col-span-2">
                 <label className="text-xs font-medium text-gray-600">Planilla firmada (PDF / imagen)</label>
@@ -1308,12 +1459,35 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                 ⚠️ {errorGuardar}
               </div>
             )}
-            <button onClick={guardarEjecucion}
-              disabled={guardando}
-              className="w-full mt-4 text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
-              style={{ backgroundColor: editandoEjecucion ? '#1e3a3a' : color }}>
-              {guardando ? '⏳ Guardando...' : editandoEjecucion ? '💾 Guardar cambios' : 'Guardar registro'}
-            </button>
+            {editandoEjecucion || completandoEjecucion ? (
+              <button onClick={() => guardarEjecucion()}
+                disabled={guardando}
+                className="w-full mt-4 text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ backgroundColor: completandoEjecucion ? COLOR_ESTADO.realizada : '#1e3a3a' }}>
+                {guardando ? '⏳ Guardando...' : completandoEjecucion ? '✓ Completar — queda REALIZADO' : '💾 Guardar cambios'}
+              </button>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  <button onClick={() => guardarEjecucion('realizado')}
+                    disabled={guardando}
+                    className="text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: COLOR_ESTADO.realizada }}>
+                    {guardando ? '⏳ Guardando...' : '✓ Realizado'}
+                  </button>
+                  <button onClick={() => guardarEjecucion('pendiente')}
+                    disabled={guardando || !form.obs.trim()}
+                    title={!form.obs.trim() ? 'Escribí en Observaciones qué quedó por hacer' : ''}
+                    className="text-white font-semibold py-2.5 rounded-xl text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: COLOR_ESTADO.pendiente }}>
+                    ⏳ Dejar pendiente
+                  </button>
+                </div>
+                {!form.obs.trim() && (
+                  <p className="text-xs text-gray-400 mt-1.5 text-right">Para dejarlo pendiente, escribí en Observaciones qué quedó por hacer.</p>
+                )}
+              </>
+            )}
           </div>
         )}
 
@@ -1338,16 +1512,22 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
               let badgeText: string
               let badgeStyle: React.CSSProperties
               let borderClass: string
-              if (planillaMes) {
+              const pendiente = pendienteDe(p.codigo)
+              if (pendiente) {
+                // Un pendiente sin completar manda sobre cualquier otro estado
+                badgeText  = '⏳ Pendiente'
+                badgeStyle = estilosEstado.pendiente
+                borderClass = 'border-l-orange-600'
+              } else if (planillaMes) {
                 const est = estadoMes(p, planillaMes.fechas)
                 badgeText  = est === 'realizada' ? '✅ Al día' : est === 'vencida' ? '⚠️ Vencida' : '⏰ Para realizar'
                 badgeStyle = estilosEstado[est === 'realizada' ? 'verde' : est === 'vencida' ? 'rojo' : 'naranja']
-                borderClass = est === 'realizada' ? 'border-l-green-600' : est === 'vencida' ? 'border-l-red-600' : 'border-l-yellow-500'
+                borderClass = est === 'realizada' ? 'border-l-green-600' : est === 'vencida' ? 'border-l-red-600' : 'border-l-slate-500'
               } else {
                 const col = colorEstadoFecha(proxima)
                 badgeText  = col === 'rojo' ? '⚠️ Vencida' : col === 'naranja' ? '⏰ Próxima' : '✅ Al día'
                 badgeStyle = estilosEstado[col]
-                borderClass = col === 'rojo' ? 'border-l-red-600' : col === 'naranja' ? 'border-l-yellow-500' : 'border-l-green-600'
+                borderClass = col === 'rojo' ? 'border-l-red-600' : col === 'naranja' ? 'border-l-slate-500' : 'border-l-green-600'
               }
 
               const tieneAnotacion = !!(anotaciones[p.codigo]?.trim())
@@ -1371,6 +1551,11 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                           <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
                             Última: {fmtFecha(ultimaEj.fecha)} — {ultimaEj.ejecutado_por}
                             {ultimaEj.archivo_nombre && <span className="text-green-500">📎</span>}
+                          </p>
+                        )}
+                        {pendiente && (
+                          <p className="text-xs mt-1 rounded px-2 py-1 font-semibold line-clamp-2" style={{ background: '#fff7ed', color: '#9a3412' }}>
+                            Queda por hacer: {pendiente.observaciones}
                           </p>
                         )}
                       </div>

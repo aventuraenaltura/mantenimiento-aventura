@@ -20,6 +20,8 @@ interface Ejecucion {
   archivo_data?: string
   archivo_url?: string
   archivos_agrimensor?: { nombre: string; data: string }[]
+  estado?: 'realizado' | 'pendiente'
+  pendiente_nota?: string
 }
 
 const ACTIVIDADES_IDS = ['tirolesa', 'arqueria', 'parque', 'salon']
@@ -101,6 +103,8 @@ export default function ExportarRegistros() {
         'Tiempo (min)': ej.tiempo_min ?? '',
         'Repuestos': ej.repuestos ?? '',
         'Observaciones': ej.observaciones ?? '',
+        'Estado': ej.estado === 'pendiente' ? 'PENDIENTE' : 'REALIZADO',
+        'Había quedado pendiente': ej.pendiente_nota ?? '',
         'Próxima fecha': ej.proxima_fecha,
         'Archivo adjunto': ej.archivo_url ?? (ej.archivo_nombre ? '(local)' : ''),
       }))
@@ -110,7 +114,7 @@ export default function ExportarRegistros() {
     ws['!cols'] = [
       { wch: 12 }, { wch: 18 }, { wch: 30 }, { wch: 12 },
       { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 12 },
-      { wch: 25 }, { wch: 35 }, { wch: 14 }, { wch: 50 },
+      { wch: 25 }, { wch: 35 }, { wch: 12 }, { wch: 35 }, { wch: 14 }, { wch: 50 },
     ]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Registros')

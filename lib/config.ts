@@ -1,5 +1,6 @@
 // Configuración anual de fechas de inicio de cada planilla
 // Se guarda en localStorage hasta integrar Supabase
+import { isoFecha, parseFecha } from './fecha'
 
 export interface ConfigPlanilla {
   planilla_id: string
@@ -39,7 +40,7 @@ export function getFechasDelMes(
   anio: number,
   mes: number // 0-based
 ): string[] {
-  const inicio = new Date(fechaInicio)
+  const inicio = parseFecha(fechaInicio)
   const fechas: string[] = []
   const primerDia = new Date(anio, mes, 1)
   const ultimoDia = new Date(anio, mes + 1, 0)
@@ -66,7 +67,7 @@ export function getFechasDelMes(
 
   // Recolectar todas las fechas dentro del mes
   while (cursor <= ultimoDia) {
-    fechas.push(cursor.toISOString().split('T')[0])
+    fechas.push(isoFecha(cursor))
     if (frecuencia === 'diaria' || frecuencia === 'semanal') {
       avanzar()
     } else {
@@ -81,7 +82,7 @@ export function getFechasDelMes(
 export function getProximaFechaDesdeConfig(fechaInicio: string, frecuencia: string): string {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
-  const cursor = new Date(fechaInicio)
+  const cursor = parseFecha(fechaInicio)
 
   const avanzar = () => {
     switch (frecuencia) {
@@ -97,5 +98,5 @@ export function getProximaFechaDesdeConfig(fechaInicio: string, frecuencia: stri
 
   // Si ya pasó, avanzar hasta la próxima
   while (cursor < hoy) avanzar()
-  return cursor.toISOString().split('T')[0]
+  return isoFecha(cursor)
 }

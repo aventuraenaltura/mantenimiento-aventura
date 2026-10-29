@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { hoyISO } from '@/lib/fecha'
 
 type TipoEquipo = 'arnes' | 'polea'
 type Ubicacion = 'en_uso' | 'deposito' | 'para_reparar' | 'baja'
@@ -41,7 +42,7 @@ const UBICACION_COLOR: Record<Ubicacion, string> = {
 export default function RegistrarReparacion({ equipos, onCerrar, onGuardar }: Props) {
   const [filtroTipo, setFiltroTipo] = useState<TipoEquipo>('arnes')
   const [equipoId, setEquipoId] = useState('')
-  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
+  const [fecha, setFecha] = useState(hoyISO())
   const [realizadoPor, setRealizadoPor] = useState('')
   const [tipoAccion, setTipoAccion] = useState<'mantenimiento' | 'ubicacion' | 'ambos'>('mantenimiento')
   const [descripcion, setDescripcion] = useState('')

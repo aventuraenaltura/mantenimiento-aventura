@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { hoyISO } from '@/lib/fecha'
 import { getUsuariosAsync, saveUsuarios, getSesion, type Usuario, type Rol } from '@/lib/usuarios'
 
 const ROL_INFO: Record<Rol, { label: string; color: string; desc: string }> = {
@@ -69,7 +70,7 @@ export default function UsuariosPage() {
         password: form.password,
         rol: form.rol,
         activo: form.activo,
-        creadoEn: new Date().toISOString().split('T')[0],
+        creadoEn: hoyISO(),
       })
     }
     saveUsuarios(lista)

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { fmtFecha } from '@/lib/fecha'
+import { fmtFecha, hoyISO } from '@/lib/fecha'
 
 // ── Tipos ────────────────────────────────────────────────────────────
 interface Ficha {
@@ -86,7 +86,7 @@ export default function EquipoPage() {
   const [showFormEstado, setShowFormEstado] = useState(false)
 
   // Form historial
-  const [fHist, setFHist] = useState({ fecha: new Date().toISOString().split('T')[0], descripcion: '', materiales: '', quien: '' })
+  const [fHist, setFHist] = useState({ fecha: hoyISO(), descripcion: '', materiales: '', quien: '' })
   // Form cambio estado
   const [fEstado, setFEstado] = useState({ estado: '', instructor: '', observaciones: '' })
 
@@ -132,7 +132,7 @@ export default function EquipoPage() {
     await supabase.from('equipo_historial').insert(nuevo)
     setHistorial(prev => [nuevo, ...prev])
     setShowFormHistorial(false)
-    setFHist({ fecha: new Date().toISOString().split('T')[0], descripcion: '', materiales: '', quien: '' })
+    setFHist({ fecha: hoyISO(), descripcion: '', materiales: '', quien: '' })
   }
 
   async function cambiarEstado() {
@@ -143,7 +143,7 @@ export default function EquipoPage() {
     const hist: Historial = {
       id: `hist_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
       ficha_id: fichaSeleccionada.id,
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: hoyISO(),
       tipo: 'cambio_estado',
       descripcion: `Estado cambiado a: ${ESTADO_CONFIG[fEstado.estado]?.label ?? fEstado.estado}${fEstado.instructor ? ` — Instructor: ${fEstado.instructor}` : ''}${fEstado.observaciones ? `. ${fEstado.observaciones}` : ''}`,
       quien: usuario?.nombre,

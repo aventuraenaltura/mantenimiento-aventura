@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { fmtFecha } from '@/lib/fecha'
+import { fmtFecha, hoyISO } from '@/lib/fecha'
 
 interface FotoLibro {
   id: string
@@ -60,7 +60,7 @@ export default function LibroIngeniero({ esAdmin }: { esAdmin: boolean }) {
         mes: mesSeleccionado,
         url: urlData.publicUrl,
         nombre: file.name,
-        fecha_subida: new Date().toISOString().split('T')[0],
+        fecha_subida: hoyISO(),
       }
       const { error: dbError } = await supabase.from('libro_ingeniero').insert(nueva)
       if (dbError) { setError('La foto se subió pero no se pudo registrar. Recargá la página.'); return }

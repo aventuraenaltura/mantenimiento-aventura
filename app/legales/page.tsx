@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { fmtFecha } from '@/lib/fecha'
+import { fmtFecha, hoyISO } from '@/lib/fecha'
 
 interface Archivo {
   id: string
@@ -139,7 +139,7 @@ export default function LegalesPage() {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         nombre: file.name,
         url: urlData.publicUrl,
-        fecha_carga: new Date().toISOString().split('T')[0],
+        fecha_carga: hoyISO(),
         fecha_vencimiento: vencimiento || undefined,
       }
 

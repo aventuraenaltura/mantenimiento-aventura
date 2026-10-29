@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { PLANILLAS_INICIALES } from '@/lib/datos-iniciales'
-import { fmtFecha } from '@/lib/fecha'
+import { fmtFecha, hoyISO, isoFecha, parseFecha } from '@/lib/fecha'
 import LibroIngeniero from '@/components/LibroIngeniero'
 import { cargarEjecuciones, insertarEjecucion, actualizarEjecucion } from '@/lib/db'
 import { getFechasDelMes } from '@/lib/config'
@@ -67,7 +67,7 @@ interface Props {
 function colorEstadoFecha(proximaFecha: string): 'rojo' | 'naranja' | 'verde' {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
-  const proxima = new Date(proximaFecha)
+  const proxima = parseFecha(proximaFecha)
   const diff = (proxima.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24)
   if (diff < 0) return 'rojo'
   if (diff <= 7) return 'naranja'
@@ -75,7 +75,7 @@ function colorEstadoFecha(proximaFecha: string): 'rojo' | 'naranja' | 'verde' {
 }
 
 function calcularProximaFecha(fechaEjecucion: string, frecuencia: string): string {
-  const fecha = new Date(fechaEjecucion)
+  const fecha = parseFecha(fechaEjecucion)
   switch (frecuencia) {
     case 'diaria':      fecha.setDate(fecha.getDate() + 1); break
     case 'semanal':     fecha.setDate(fecha.getDate() + 7); break
@@ -86,7 +86,7 @@ function calcularProximaFecha(fechaEjecucion: string, frecuencia: string): strin
     case 'semestral':   fecha.setMonth(fecha.getMonth() + 6); break
     case 'anual':       fecha.setFullYear(fecha.getFullYear() + 1); break
   }
-  return fecha.toISOString().split('T')[0]
+  return isoFecha(fecha)
 }
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -115,7 +115,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     const defaults = actividadId === 'tirolesa'
       ? { ingeniero: 'Ing. Luciano Capdevila', controlo: 'Lic. Juan Vanadía' }
       : { ingeniero: '', controlo: '' }
-    return { fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', ...defaults }
+    return { fecha: hoyISO(), nombre: '', tiempo: '', repuestos: '', obs: '', ...defaults }
   })
 
 
@@ -371,7 +371,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     if (p.frecuencia === 'diaria') base.setDate(base.getDate() - 1)
     else if (p.frecuencia === 'semanal') base.setDate(base.getDate() + 5)
     else base.setDate(base.getDate() + 20)
-    return base.toISOString().split('T')[0]
+    return isoFecha(base)
   }
 
   // Calcula si una planilla está programada para un mes/año dado
@@ -388,7 +388,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     // Buscar hacia adelante desde la última ejecución
     let cursor = calcularProximaFecha(ultimaEj.fecha, p.frecuencia)
     for (let i = 0; i < 200; i++) {
-      const d = new Date(cursor)
+      const d = parseFecha(cursor)
       if (d >= targetInicio && d <= targetFin) return cursor
       if (d > targetFin) break
       cursor = calcularProximaFecha(cursor, p.frecuencia)
@@ -397,11 +397,11 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     // Buscar hacia atrás desde la última ejecución para meses pasados
     let cursorAtr = ultimaEj.fecha
     for (let i = 0; i < 200; i++) {
-      const d = new Date(cursorAtr)
+      const d = parseFecha(cursorAtr)
       if (d >= targetInicio && d <= targetFin) return cursorAtr
       if (d < targetInicio) break
       // Retroceder un ciclo
-      const prev = new Date(cursorAtr)
+      const prev = parseFecha(cursorAtr)
       if (p.frecuencia === 'diaria') prev.setDate(prev.getDate() - 1)
       else if (p.frecuencia === 'semanal') prev.setDate(prev.getDate() - 7)
       else if (p.frecuencia === 'mensual') prev.setMonth(prev.getMonth() - 1)
@@ -410,7 +410,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
       else if (p.frecuencia === 'semestral') prev.setMonth(prev.getMonth() - 6)
       else if (p.frecuencia === 'anual') prev.setFullYear(prev.getFullYear() - 1)
       else break
-      cursorAtr = prev.toISOString().split('T')[0]
+      cursorAtr = isoFecha(prev)
     }
 
     return null
@@ -422,7 +422,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     planillas.forEach(p => {
       // Verificar si hay ejecución en ese mes
       const ejEnMes = ejecuciones.find(e => {
-        const d = new Date(e.fecha)
+        const d = parseFecha(e.fecha)
         return e.planilla_id === p.codigo && d.getMonth() === calMes && d.getFullYear() === calAnio
       })
       if (ejEnMes) {
@@ -518,7 +518,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
       const cambios = {
         estado: 'realizado' as const,
         pendiente_nota: original.observaciones ?? '',
-        completado_fecha: new Date().toISOString().split('T')[0],
+        completado_fecha: hoyISO(),
         completado_por: form.nombre,
         controlo: form.controlo,
         ingeniero: form.ingeniero,
@@ -595,7 +595,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
     const defaultsCampos = actividadId === 'tirolesa'
       ? { ingeniero: 'Ing. Luciano Capdevila', controlo: 'Lic. Juan Vanadía' }
       : { ingeniero: '', controlo: '' }
-    setForm({ fecha: new Date().toISOString().split('T')[0], nombre: '', tiempo: '', repuestos: '', obs: '', ...defaultsCampos })
+    setForm({ fecha: hoyISO(), nombre: '', tiempo: '', repuestos: '', obs: '', ...defaultsCampos })
     setArchivoFirmado(null)
     setArchivosAgrimensor([])
     } catch (err) {
@@ -686,7 +686,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   planillas.forEach(p => {
     // Primero buscar ejecución real en el mes
     const ejEnMes = ejecuciones.find(e => {
-      const d = new Date(e.fecha)
+      const d = parseFecha(e.fecha)
       return e.planilla_id === p.codigo && d.getMonth() === calMes && d.getFullYear() === calAnio
     })
 
@@ -703,14 +703,14 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
       } else if (calMes === hoy.getMonth() && calAnio === hoy.getFullYear()) {
         // Sin ejecuciones y es el mes actual: mostrar con getProximaFecha
         const px = getProximaFecha(p)
-        const d = new Date(px)
+        const d = parseFecha(px)
         if (d.getMonth() === calMes && d.getFullYear() === calAnio) fechaRef = px
       }
     }
 
     if (!fechaRef) return
 
-    const dia = new Date(fechaRef).getDate()
+    const dia = parseFecha(fechaRef).getDate()
     const est = estadoMes(p, [fechaRef])
     const col = COLOR_ESTADO[est]
     if (!diasConPlanilla[dia]) diasConPlanilla[dia] = []
@@ -737,7 +737,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   const planillasMesParaPDF = planillaParaImprimir
     ? planillasMes.filter(pm => pm.planilla.codigo === planillaParaImprimir.codigo).length > 0
       ? planillasMes.filter(pm => pm.planilla.codigo === planillaParaImprimir.codigo)
-      : [{ planilla: planillaParaImprimir, fechas: [new Date().toISOString().split('T')[0]] }]
+      : [{ planilla: planillaParaImprimir, fechas: [hoyISO()] }]
     : planillasMes
 
   // Vista de impresión del resumen mensual
@@ -832,7 +832,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                         <td style={{ padding: '7px 10px', fontWeight: 600 }}>{p.nombre}</td>
                         <td style={{ padding: '7px 10px', textAlign: 'center', fontSize: 11 }}>{FREC_LABEL[p.frecuencia]}</td>
                         <td style={{ padding: '7px 10px', textAlign: 'center', fontSize: 11 }}>
-                          {fechas.map(f => new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })).join(' / ')}
+                          {fechas.map(f => parseFecha(f).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })).join(' / ')}
                         </td>
                         <td style={{ padding: '7px 10px', textAlign: 'center' }}>
                           <span style={{
@@ -866,7 +866,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                       </div>
                       <div style={{ fontSize: 11, textAlign: 'right' }}>
                         <span style={{ marginRight: 12 }}>{FREC_LABEL[p.frecuencia]}</span>
-                        <strong>{fechas.map(f => new Date(f).toLocaleDateString('es-AR')).join(' / ')}</strong>
+                        <strong>{fechas.map(f => parseFecha(f).toLocaleDateString('es-AR')).join(' / ')}</strong>
                       </div>
                     </div>
 
@@ -936,12 +936,12 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
   // Determinar estado de una planilla del mes: realizada / pendiente / para realizar / vencida
   function estadoMes(p: Planilla, fechas: string[]): EstadoMes {
     const ejDelMes = ejecuciones.filter(e => {
-      const d = new Date(e.fecha)
+      const d = parseFecha(e.fecha)
       return e.planilla_id === p.codigo && d.getMonth() === calMes && d.getFullYear() === calAnio
     })
     if (ejDelMes.some(e => !esPendiente(e))) return 'realizada'
     if (ejDelMes.length > 0) return 'pendiente'
-    const todasPasadas = fechas.every(f => new Date(f) < hoy)
+    const todasPasadas = fechas.every(f => parseFecha(f) < hoy)
     if (todasPasadas) return 'vencida'
     return 'para_realizar'
   }
@@ -1072,7 +1072,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                         <p className="text-xs text-gray-400 mt-0.5">
                           <span className="font-mono">{p.codigo}</span>
                           <span className="mx-1">·</span>
-                          {fechas.map(f => new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })).join(', ')}
+                          {fechas.map(f => parseFecha(f).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })).join(', ')}
                         </p>
                       </div>
 
@@ -1563,7 +1563,7 @@ export default function PanelActividad({ actividadId, nombre, color, icono, logo
                         <span className="text-xs font-bold rounded-lg px-2.5 py-1" style={badgeStyle}>{badgeText}</span>
                         <p className="text-xs text-gray-400 mt-1">
                           {(() => {
-                            const hoy = new Date().toISOString().split('T')[0]
+                            const hoy = hoyISO()
                             if (proxima < hoy) return `Venció el ${fmtFecha(proxima)}`
                             return `Próxima: ${fmtFecha(proxima)}`
                           })()}

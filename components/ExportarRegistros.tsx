@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import JSZip from 'jszip'
+import { hoyISO, isoFecha } from '@/lib/fecha'
 import { PLANILLAS_INICIALES, ACTIVIDADES } from '@/lib/datos-iniciales'
 import { obtenerFotosLibro } from '@/components/LibroIngeniero'
 
@@ -58,9 +59,9 @@ function mesLabel(fecha: string): string {
 
 export default function ExportarRegistros() {
   const [abierto, setAbierto] = useState(false)
-  const hoy = new Date().toISOString().split('T')[0]
+  const hoy = hoyISO()
   const hace6meses = new Date(); hace6meses.setMonth(hace6meses.getMonth() - 6)
-  const [desde, setDesde] = useState(hace6meses.toISOString().split('T')[0])
+  const [desde, setDesde] = useState(isoFecha(hace6meses))
   const [hasta, setHasta] = useState(hoy)
   const [exportando, setExportando] = useState(false)
   const [progreso, setProgreso] = useState('')

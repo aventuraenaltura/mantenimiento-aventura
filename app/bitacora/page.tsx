@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { fmtFecha } from '@/lib/fecha'
+import { fmtFecha, hoyISO } from '@/lib/fecha'
 
 // ── Tipos ────────────────────────────────────────────────────────────
 interface Registro {
@@ -77,7 +77,7 @@ export default function BitacoraPage() {
 
   // Form registro
   const [fReg, setFReg] = useState({
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: hoyISO(),
     hora: new Date().toTimeString().slice(0, 5),
     sector: '', elemento: '', trabajo: '', quien: '',
     materiales_usados: '', tuvo_novedad: false,
@@ -161,7 +161,7 @@ export default function BitacoraPage() {
     }
 
     setShowFormRegistro(false)
-    setFReg({ fecha: new Date().toISOString().split('T')[0], hora: new Date().toTimeString().slice(0,5), sector: '', elemento: '', trabajo: '', quien: '', materiales_usados: '', tuvo_novedad: false, detalle_novedad: '', pendiente: '', observaciones: '', materiales_faltantes: [], nuevo_material: '' })
+    setFReg({ fecha: hoyISO(), hora: new Date().toTimeString().slice(0,5), sector: '', elemento: '', trabajo: '', quien: '', materiales_usados: '', tuvo_novedad: false, detalle_novedad: '', pendiente: '', observaciones: '', materiales_faltantes: [], nuevo_material: '' })
     cargarTodo()
   }
 
@@ -188,7 +188,7 @@ export default function BitacoraPage() {
         descripcion: mat,
         urgencia: fTarea.urgencia === 'muy_urgente' ? 'urgente' : 'normal',
         solicitado_por: usuario?.nombre,
-        solicitado_en: new Date().toISOString().split('T')[0],
+        solicitado_en: hoyISO(),
         llego: false,
         notas: `Requerido por tarea: ${fTarea.descripcion}`,
       })
@@ -200,7 +200,7 @@ export default function BitacoraPage() {
 
   async function cambiarEstadoTarea(id: string, estado: Tarea['estado']) {
     const upd: Partial<Tarea> = { estado }
-    if (estado === 'finalizado') upd.finalizado_at = new Date().toISOString().split('T')[0]
+    if (estado === 'finalizado') upd.finalizado_at = hoyISO()
     await supabase.from('bitacora_tareas').update(upd).eq('id', id)
     setTareas(prev => prev.map(t => t.id === id ? { ...t, ...upd } : t))
   }
@@ -218,7 +218,7 @@ export default function BitacoraPage() {
       id: `ped_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
       ...fPedido,
       solicitado_por: usuario?.nombre,
-      solicitado_en: new Date().toISOString().split('T')[0],
+      solicitado_en: hoyISO(),
       llego: false,
     })
     setShowFormPedido(false)
@@ -228,9 +228,9 @@ export default function BitacoraPage() {
 
   async function marcarPedidoLlegado(id: string, llego: boolean) {
     await supabase.from('bitacora_pedidos').update({
-      llego, fecha_llegada: llego ? new Date().toISOString().split('T')[0] : null
+      llego, fecha_llegada: llego ? hoyISO() : null
     }).eq('id', id)
-    setPedidos(prev => prev.map(p => p.id === id ? { ...p, llego, fecha_llegada: llego ? new Date().toISOString().split('T')[0] : undefined } : p))
+    setPedidos(prev => prev.map(p => p.id === id ? { ...p, llego, fecha_llegada: llego ? hoyISO() : undefined } : p))
   }
 
   // ── Filtrar tareas ──────────────────────────────────────────────────
